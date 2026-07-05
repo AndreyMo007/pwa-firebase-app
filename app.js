@@ -14,7 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// PWA — Установка приложения
+// ========== PWA — Установка приложения ==========
 let deferredPrompt;
 const installBanner = document.getElementById('install-banner');
 const installBtn = document.getElementById('install-btn');
@@ -48,7 +48,8 @@ if (window.matchMedia('(display-mode: standalone)').matches) {
   installBanner.classList.add('hidden');
 }
 
-// Проверка подключения к Firestore
+// ========== FIREBASE ФУНКЦИИ ==========
+
 async function checkFirebaseConnection() {
   const statusElement = document.getElementById('firebase-status');
   try {
@@ -64,7 +65,6 @@ async function checkFirebaseConnection() {
   }
 }
 
-// Получение данных из Firestore
 async function loadFirestoreData() {
   const dataElement = document.getElementById('firestore-data');
   try {
@@ -85,12 +85,83 @@ async function loadFirestoreData() {
   }
 }
 
-// Инициализация при загрузке
+// ========== АВТООБНОВЛЕНИЕ ==========
+let refreshing = false;
+
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+  if (!refreshing) {
+    refreshing = true;
+    window.location.reload();
+  }
+});
+
+// Проверять обновления каждый час
+setInterval(() => {
+  navigator.serviceWorker.getRegistration().then(registration => {
+    if (registration) {
+      registration.update();
+    }
+  });
+}, 3600000);
+
+// ========== УВЕДОМЛЕНИЕ ОБ ОБНОВЛЕНИИ ==========
+function showUpdateNotification() {
+  const updateBanner = document.createElement('div');
+  updateBanner.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: #4caf50;
+    color: white;
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+  `;
+  updateBanner.innerHTML = `
+    <p style="margin-bottom: 10px;">🔄 Доступна новая версия!</p>
+    <button id="update-btn" style="
+      background: white;
+      color: #4caf50;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    ">Обновить сейчас</button>
+  `;
+  
+  document.body.appendChild(updateBanner);
+  
+  document.getElementById('update-btn').addEventListener('click', () => {
+    updateBanner.remove();
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker зарегистрирован:', registration.scope);
+      
+      // Проверка обновлений
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('🔄 Найдено обновление!');
+            showUpdateNotification();
+          }
+        });
+      });
+      
     } catch (error) {
       console.error('Ошибка регистрации Service Worker:', error);
     }
