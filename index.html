@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="theme-color" content="#1e1e2f" />
+  <meta name="description" content="PWA приложение с Firebase" />
+  <title>Моё PWA приложение</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+</head>
+<body>
+  <div class="container">
+    <h1>📱 Моё PWA Приложение</h1>
+    <p>С подключением к Firebase</p>
+
+    <div id="install-banner" class="install-banner hidden">
+      <button id="install-btn" class="install-btn">📲 Установить приложение</button>
+    </div>
+
+    <div class="status-card">
+      <h3>Статус Firebase:</h3>
+      <p id="firebase-status">Проверка подключения...</p>
+    </div>
+
+    <div class="info-card">
+      <h3>Данные из Firestore:</h3>
+      <div id="firestore-data">Загрузка...</div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
