@@ -1,9 +1,6 @@
-// Импорт Firebase (ES модули)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-// ⚠️ ЗАМЕНИ НА СВОИ ДАННЫЕ ИЗ FIREBASE CONSOLE
 const firebaseConfig = {
   apiKey: "AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",
   authDomain: "clash-of-mas-2c0fc.firebaseapp.com",
@@ -14,7 +11,6 @@ const firebaseConfig = {
   appId: "1:127863621457:web:3137db5d7f9e9878b1f570"
 };
 
-// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -41,20 +37,16 @@ installBtn.addEventListener('click', async () => {
   installBanner.classList.add('hidden');
 });
 
-// Скрываем кнопку, если приложение уже установлено
 window.addEventListener('appinstalled', () => {
   console.log('Приложение установлено');
   installBanner.classList.add('hidden');
   deferredPrompt = null;
 });
 
-// Проверка, запущено ли как standalone (установленное PWA)
 if (window.matchMedia('(display-mode: standalone)').matches) {
   console.log('Приложение запущено в standalone режиме');
   installBanner.classList.add('hidden');
 }
-
-// ========== FIREBASE ФУНКЦИИ ==========
 
 // Проверка подключения к Firestore
 async function checkFirebaseConnection() {
@@ -95,7 +87,6 @@ async function loadFirestoreData() {
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', async () => {
-  // Регистрация Service Worker
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js');
@@ -105,10 +96,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Проверка Firebase
   await checkFirebaseConnection();
   await loadFirestoreData();
 
-  // Обновление данных каждые 30 секунд
   setInterval(loadFirestoreData, 30000);
 });
