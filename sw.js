@@ -14,7 +14,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Кэширование ресурсов');
+        console.log('✅ Кэширование ресурсов');
         return cache.addAll(ASSETS_TO_CACHE);
       })
       .catch(err => console.log('Ошибка кэширования:', err))
@@ -41,7 +41,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Кэшируем успешные ответы
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseClone);
@@ -54,17 +53,13 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Обработка push-уведомлений (для Firebase)
+// Push-уведомления
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'Новое уведомление',
     icon: '/icon-192.png',
-    badge: '/icon-72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    }
+    badge: '/icon-192.png',
+    vibrate: [100, 50, 100]
   };
 
   event.waitUntil(
