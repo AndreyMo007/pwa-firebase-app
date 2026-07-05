@@ -1,4 +1,5 @@
-const CACHE_NAME = 'pwa-firebase-v1';
+const CACHE_NAME = 'pwa-firebase-v2';
+
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -65,4 +66,11 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification('Моё PWA', options)
   );
+});
+
+// Сообщение об обновлении
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
