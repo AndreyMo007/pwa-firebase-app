@@ -1078,6 +1078,102 @@
       const avatar = document.getElementById('profileAvatar');
       if (avatar) avatar.onclick = () => document.getElementById('newAvatarInput').click();
     }, 1000);
+    // ========== ПРОВЕРКА ОБНОВЛЕНИЙ ==========
+    let refreshing = false;
+    
+    // Автоматическое обновление при смене Service Worker
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+    
+    // Проверка обновлений каждый час
+    setInterval(() => {
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.getRegistration().then(registration => {
+          if (registration) {
+            registration.update();
+          }
+        });
+      }
+    }, 3600000); // 1 час
+    
+    // Показывать баннер при обнаружении обновления
+    function showUpdateBanner() {
+      const banner = document.createElement('div');
+      banner.id = 'updateBanner';
+      banner.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--accent);
+        color: white;
+        padding: 14px 24px;
+        border-radius: 50px;
+        z-index: 10000;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      `;
+      banner.innerHTML = '🔄 Доступно обновление! Нажмите чтобы обновить';
+      banner.onclick = () => {
+        banner.remove();
+        refreshing = true;
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.controller.postMessage('skipWaiting');
+        }
+        window.location.reload();
+      };
+      document.body.appendChild(banner);
+      
+      // Автоматически скрыть через 10 секунд
+      setTimeout(() => {
+        if (document.getElementById('updateBanner')) {
+          document.getElementById('updateBanner').remove();
+        }
+      }, 10000);
+    }
+    
+    // Отслеживание обновлений Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Найдена новая версия!
+              console.log('🔄 Найдено обновление!');
+              showUpdateBanner();
+            }
+          });
+        });
+      });
+    }
+    
+    // Анимация для баннера
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes slideUp {
+        from {
+          transform: translateX(-50%) translateY(100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
   </script>
 </body>
 </html>
