@@ -5,67 +5,472 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="description" content="3D Brawl Arena">
+  <meta name="screen-orientation" content="landscape">
   <title>3D Brawl Arena</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; height: 100vh; width: 100vw; font-family: Arial, sans-serif; }
+    body { 
+      background: #000; 
+      overflow: hidden; 
+      touch-action: none; 
+      user-select: none; 
+      -webkit-user-select: none; 
+      height: 100vh; 
+      width: 100vw; 
+      font-family: Arial, sans-serif;
+      position: fixed;
+    }
+    
+    /* Принудительная ландшафтная ориентация */
+    @media screen and (orientation: portrait) {
+      body::before {
+        content: "Пожалуйста, поверните устройство";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        z-index: 9999;
+        text-align: center;
+        padding: 20px;
+      }
+    }
     
     .welcome-screen {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; text-align: center; background: linear-gradient(135deg, #1a0033, #0a0a2e);
-      color: white; padding: 20px;
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center;
+      height: 100vh; 
+      text-align: center; 
+      background: linear-gradient(135deg, #1a0033, #0a0a2e);
+      color: white; 
+      padding: 20px;
     }
-    .welcome-screen .logo { font-size: 100px; animation: bounce 1.5s infinite; }
-    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-30px)} }
-    .welcome-screen h1 { font-size: 3rem; background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 20px 0; }
-    .welcome-screen p { opacity: 0.8; margin-bottom: 30px; font-size: 1.2rem; }
-    .install-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; padding: 18px 50px; border-radius: 50px; font-size: 1.3rem; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 10px 30px rgba(255,107,107,0.4); animation: pulse 2s infinite; margin-bottom: 15px; }
-    @keyframes pulse { 0%,100%{box-shadow:0 10px 30px rgba(255,107,107,0.4)} 50%{box-shadow:0 10px 50px rgba(255,107,107,0.8)} }
-    .open-btn { background: transparent; color: #ffd93d; padding: 14px 30px; border-radius: 50px; font-size: 1rem; cursor: pointer; border: 2px solid #ffd93d; margin-top: 10px; }
     
-    #gameContainer { display: none; position: relative; width: 100vw; height: 100vh; }
-    canvas { display: block; }
+    .welcome-screen .logo { 
+      font-size: 80px; 
+      animation: bounce 1.5s infinite; 
+    }
+    
+    @keyframes bounce { 
+      0%,100%{transform:translateY(0)} 
+      50%{transform:translateY(-20px)} 
+    }
+    
+    .welcome-screen h1 { 
+      font-size: 2.5rem; 
+      background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+      margin: 15px 0; 
+    }
+    
+    .install-btn { 
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24); 
+      color: white; 
+      padding: 18px 50px; 
+      border-radius: 50px; 
+      font-size: 1.3rem; 
+      font-weight: 700; 
+      cursor: pointer; 
+      border: none; 
+      box-shadow: 0 10px 30px rgba(255,107,107,0.4); 
+      animation: pulse 2s infinite; 
+      margin: 15px 0; 
+      display: none;
+    }
+    
+    @keyframes pulse { 
+      0%,100%{box-shadow:0 10px 30px rgba(255,107,107,0.4)} 
+      50%{box-shadow:0 10px 50px rgba(255,107,107,0.8)} 
+    }
+    
+    #gameContainer { 
+      display: none; 
+      position: relative; 
+      width: 100vw; 
+      height: 100vh; 
+    }
+    
+    /* Экран ввода ника */
+    .nickname-screen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1a0033, #0a0a2e);
+      z-index: 1000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    
+    .nickname-input {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid #ffd93d;
+      color: white;
+      padding: 15px 25px;
+      font-size: 1.2rem;
+      border-radius: 25px;
+      text-align: center;
+      margin: 20px 0;
+      width: 250px;
+      outline: none;
+    }
+    
+    .nickname-input::placeholder {
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .confirm-btn {
+      background: linear-gradient(135deg, #6bcb77, #4d96ff);
+      color: white;
+      padding: 15px 40px;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border: none;
+      font-weight: 700;
+    }
+    
+    /* Лобби */
+    .lobby-screen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1a0033, #0a0a2e);
+      z-index: 500;
+    }
+    
+    .lobby-top-bar {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      gap: 15px;
+    }
+    
+    .lobby-profile {
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid #ffd93d;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    
+    .lobby-rect {
+      width: 60px;
+      height: 60px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 15px;
+    }
+    
+    .login-btn {
+      margin-left: auto;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      padding: 12px 25px;
+      border-radius: 25px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.3);
+      font-weight: 600;
+    }
+    
+    .collection-btn {
+      position: absolute;
+      left: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid #ffd93d;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      color: white;
+    }
+    
+    /* Коллекция персонажей */
+    .collection-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 2000;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    
+    .collection-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      color: white;
+    }
+    
+    .close-collection {
+      background: #ff4444;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    
+    .characters-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      padding: 10px;
+    }
+    
+    .character-card {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 15px;
+      text-align: center;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .character-card:hover {
+      border-color: #ffd93d;
+      transform: scale(1.05);
+    }
+    
+    .character-card.selected {
+      border-color: #4d96ff;
+      background: rgba(77,150,255,0.2);
+    }
+    
+    .character-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    
+    .character-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .character-stats {
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+    
+    /* Экран создания персонажа */
+    .create-character-screen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 3000;
+      color: white;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .create-form {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #ffd93d;
+    }
+    
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 10px;
+      font-size: 1rem;
+    }
+    
+    .save-character-btn {
+      background: linear-gradient(135deg, #6bcb77, #4d96ff);
+      color: white;
+      padding: 15px;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border: none;
+      font-weight: 700;
+      width: 100%;
+      margin-top: 20px;
+    }
+    
+    .game-ui {
+      display: none;
+    }
     
     .ui-top {
-      position: absolute; top: 10px; left: 10px; right: 10px;
-      display: flex; justify-content: space-between; align-items: center;
-      z-index: 10; pointer-events: none;
+      position: absolute; 
+      top: 10px; 
+      left: 10px; 
+      right: 10px;
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      z-index: 10; 
+      pointer-events: none;
     }
-    .hp-bar { width: 120px; height: 12px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 2px solid white; }
-    .hp-fill { height: 100%; background: #00ff00; transition: width 0.3s; border-radius: 10px; }
-    .score { color: #ffd93d; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px rgba(255,217,61,0.5); }
-    .timer { color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 15px; }
+    
+    .hp-bar { 
+      width: 120px; 
+      height: 12px; 
+      background: rgba(0,0,0,0.5); 
+      border-radius: 10px; 
+      overflow: hidden; 
+      border: 2px solid white; 
+    }
+    
+    .hp-fill { 
+      height: 100%; 
+      background: #00ff00; 
+      transition: width 0.3s; 
+      border-radius: 10px; 
+    }
+    
+    .score { 
+      color: #ffd93d; 
+      font-size: 18px; 
+      font-weight: bold; 
+    }
+    
+    .timer { 
+      color: white; 
+      font-size: 20px; 
+      font-weight: bold; 
+      background: rgba(0,0,0,0.5); 
+      padding: 5px 12px; 
+      border-radius: 15px; 
+    }
     
     .joystick {
-      position: absolute; bottom: 40px; width: 130px; height: 130px; z-index: 20;
+      position: absolute; 
+      bottom: 40px; 
+      width: 130px; 
+      height: 130px; 
+      z-index: 20;
     }
+    
     #moveJoystick { left: 30px; }
     #attackJoystick { right: 30px; }
+    
     .joystick-base {
-      width: 100%; height: 100%; background: rgba(255,255,255,0.1);
-      border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); position: relative;
+      width: 100%; 
+      height: 100%; 
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%; 
+      border: 2px solid rgba(255,255,255,0.2); 
+      position: relative;
     }
+    
     .joystick-thumb {
-      width: 55px; height: 55px; background: rgba(255,255,255,0.4);
-      border-radius: 50%; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); border: 2px solid white; pointer-events: none;
+      width: 55px; 
+      height: 55px; 
+      background: rgba(255,255,255,0.4);
+      border-radius: 50%; 
+      position: absolute; 
+      top: 50%; 
+      left: 50%;
+      transform: translate(-50%, -50%); 
+      border: 2px solid white; 
+      pointer-events: none;
     }
+    
     #moveLabel, #attackLabel {
-      position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
-      color: rgba(255,255,255,0.6); font-size: 11px; font-weight: bold; white-space: nowrap;
+      position: absolute; 
+      top: -25px; 
+      left: 50%; 
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.6); 
+      font-size: 11px; 
+      font-weight: bold; 
+      white-space: nowrap;
     }
     
     .game-over {
-      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); z-index: 100;
-      justify-content: center; align-items: center; flex-direction: column; color: white;
+      display: none; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%;
+      background: rgba(0,0,0,0.85); 
+      z-index: 100;
+      justify-content: center; 
+      align-items: center; 
+      flex-direction: column; 
+      color: white;
     }
-    .game-over h2 { font-size: 2.5rem; margin-bottom: 10px; }
-    .game-over .final-score { font-size: 2rem; color: #ffd93d; margin-bottom: 20px; }
-    .game-over button { background: #6bcb77; color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 700; }
+    
+    .game-over h2 { 
+      font-size: 2.5rem; 
+      margin-bottom: 10px; 
+    }
+    
+    .game-over .final-score { 
+      font-size: 2rem; 
+      color: #ffd93d; 
+      margin-bottom: 20px; 
+    }
+    
+    .game-over button { 
+      background: #6bcb77; 
+      color: white; 
+      padding: 15px 40px; 
+      border-radius: 50px; 
+      font-size: 1.2rem; 
+      cursor: pointer; 
+      border: none; 
+      font-weight: 700; 
+    }
     
     .hidden { display: none !important; }
   </style>
@@ -76,31 +481,103 @@
   <div id="welcomeScreen" class="welcome-screen">
     <div class="logo">⚔️</div>
     <h1>3D Brawl Arena</h1>
-    <p>Два джойстика • 3D графика • Арена</p>
-    <button id="installBtn" class="install-btn hidden" onclick="installApp()">📲 Установить игру</button>
-    <button id="openBtn" class="open-btn hidden" onclick="startGame()">🎮 Играть в браузере</button>
-    <p style="margin-top:15px;opacity:0.5;">Установите для лучшего опыта</p>
+    <p>Установите игру для полного опыта</p>
+    <button id="installBtn" class="install-btn">📲 Установить игру</button>
+  </div>
+
+  <!-- ЭКРАН ВВОДА НИКА -->
+  <div id="nicknameScreen" class="nickname-screen">
+    <h2>🎮 Добро пожаловать!</h2>
+    <p>Введите ваш никнейм</p>
+    <input type="text" id="nicknameInput" class="nickname-input" placeholder="Ваш ник" maxlength="20">
+    <button class="confirm-btn" onclick="saveNickname()">Продолжить</button>
+  </div>
+
+  <!-- ЛОББИ -->
+  <div id="lobbyScreen" class="lobby-screen">
+    <div class="lobby-top-bar">
+      <div class="lobby-profile" id="lobbyProfile">👤</div>
+      <div class="lobby-rect"></div>
+      <button class="login-btn" onclick="showLogin()">Войти</button>
+    </div>
+    <div class="collection-btn" onclick="openCollection()">📦</div>
+  </div>
+
+  <!-- КОЛЛЕКЦИЯ ПЕРСОНАЖЕЙ -->
+  <div id="collectionOverlay" class="collection-overlay">
+    <div class="collection-header">
+      <h2>Коллекция персонажей</h2>
+      <button class="close-collection" onclick="closeCollection()">✕</button>
+    </div>
+    <div class="characters-grid" id="charactersGrid"></div>
+    <button class="save-character-btn" onclick="openCreateCharacter()" style="margin-top: 20px;">+ Создать персонажа</button>
+  </div>
+
+  <!-- СОЗДАНИЕ ПЕРСОНАЖА -->
+  <div id="createCharacterScreen" class="create-character-screen">
+    <div class="collection-header">
+      <h2>Создание персонажа</h2>
+      <button class="close-collection" onclick="closeCreateCharacter()">✕</button>
+    </div>
+    <div class="create-form">
+      <div class="form-group">
+        <label>Имя персонажа</label>
+        <input type="text" id="charName" placeholder="Введите имя">
+      </div>
+      <div class="form-group">
+        <label>Здоровье (HP)</label>
+        <input type="number" id="charHP" placeholder="Например: 100" min="1">
+      </div>
+      <div class="form-group">
+        <label>Урон</label>
+        <input type="number" id="charDamage" placeholder="Например: 20" min="1">
+      </div>
+      <div class="form-group">
+        <label>Скорость передвижения</label>
+        <input type="number" id="charSpeed" placeholder="Например: 0.15" step="0.01" min="0.01">
+      </div>
+      <div class="form-group">
+        <label>Скорость перезарядки (в кадрах)</label>
+        <input type="number" id="charReload" placeholder="Например: 10" min="1">
+      </div>
+      <div class="form-group">
+        <label>Тип атаки</label>
+        <select id="charAttackType">
+          <option value="projectile">Снаряд (летит прямо)</option>
+          <option value="spread">Дробь (3 снаряда веером)</option>
+          <option value="explosive">Взрывной (урон по области)</option>
+          <option value="laser">Лазер (мгновенный луч)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Цвет персонажа (HEX)</label>
+        <input type="color" id="charColor" value="#4488ff">
+      </div>
+      <button class="save-character-btn" onclick="saveCharacter()">Сохранить персонажа</button>
+    </div>
   </div>
 
   <!-- ИГРА -->
   <div id="gameContainer">
-    <div class="ui-top">
-      <div class="hp-bar"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
-      <div class="timer" id="timer">2:00</div>
-      <div class="score" id="scoreDisplay">🏆 0</div>
-    </div>
-    
-    <div class="joystick" id="moveJoystick">
-      <div id="moveLabel">ДВИЖЕНИЕ</div>
-      <div class="joystick-base" id="moveBase">
-        <div class="joystick-thumb" id="moveThumb"></div>
+    <div class="game-ui" id="gameUI">
+      <div class="ui-top">
+        <div class="hp-bar"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
+        <div class="timer" id="timer">2:00</div>
+        <div class="score" id="scoreDisplay">🏆 0</div>
       </div>
-    </div>
-    
-    <div class="joystick" id="attackJoystick">
-      <div id="attackLabel">АТАКА</div>
-      <div class="joystick-base" id="attackBase">
-        <div class="joystick-thumb" id="attackThumb"></div>
+      
+      <div class="joystick" id="moveJoystick">
+        <div id="moveLabel">ДВИЖЕНИЕ</div>
+        <div class="joystick-base" id="moveBase">
+          <div class="joystick-thumb" id="moveThumb"></div>
+        </div>
+      </div>
+      
+      <div class="joystick" id="attackJoystick">
+        <div id="attackLabel">АТАКА</div>
+        <div class="joystick-base" id="attackBase">
+          <div class="joystick-thumb" id="attackThumb"></div>
+        </div>
       </div>
     </div>
     
@@ -112,38 +589,196 @@
   </div>
 
   <script>
+    // ========== СИСТЕМА ПЕРСОНАЖЕЙ ==========
+    // Хранилище персонажей (в реальном приложении использовать localStorage или БД)
+    let characters = [
+      {
+        id: 'default',
+        name: 'Боец',
+        hp: 100,
+        damage: 20,
+        speed: 0.15,
+        reloadSpeed: 10,
+        attackType: 'projectile',
+        color: '#4488ff',
+        isDefault: true
+      }
+    ];
+    
+    let selectedCharacter = characters[0];
+    let playerNickname = '';
+
+    // Загрузка сохраненных персонажей
+    function loadCharacters() {
+      const saved = localStorage.getItem('brawlCharacters');
+      if (saved) {
+        characters = JSON.parse(saved);
+      }
+    }
+
+    function saveCharacters() {
+      localStorage.setItem('brawlCharacters', JSON.stringify(characters));
+    }
+
+    function openCreateCharacter() {
+      document.getElementById('createCharacterScreen').style.display = 'block';
+      document.getElementById('collectionOverlay').style.display = 'none';
+    }
+
+    function closeCreateCharacter() {
+      document.getElementById('createCharacterScreen').style.display = 'none';
+      openCollection();
+    }
+
+    function saveCharacter() {
+      const name = document.getElementById('charName').value;
+      const hp = parseInt(document.getElementById('charHP').value);
+      const damage = parseInt(document.getElementById('charDamage').value);
+      const speed = parseFloat(document.getElementById('charSpeed').value);
+      const reload = parseInt(document.getElementById('charReload').value);
+      const attackType = document.getElementById('charAttackType').value;
+      const color = document.getElementById('charColor').value;
+
+      if (!name || !hp || !damage || !speed || !reload) {
+        alert('Заполните все поля!');
+        return;
+      }
+
+      const newCharacter = {
+        id: Date.now().toString(),
+        name,
+        hp,
+        damage,
+        speed,
+        reloadSpeed: reload,
+        attackType,
+        color,
+        isDefault: false
+      };
+
+      characters.push(newCharacter);
+      saveCharacters();
+      
+      // Очистка полей
+      document.getElementById('charName').value = '';
+      document.getElementById('charHP').value = '';
+      document.getElementById('charDamage').value = '';
+      document.getElementById('charSpeed').value = '';
+      document.getElementById('charReload').value = '';
+      
+      closeCreateCharacter();
+      alert(`Персонаж "${name}" создан!`);
+    }
+
+    function selectCharacter(char) {
+      selectedCharacter = char;
+      document.querySelectorAll('.character-card').forEach(card => {
+        card.classList.remove('selected');
+        if (card.dataset.id === char.id) {
+          card.classList.add('selected');
+        }
+      });
+    }
+
+    function openCollection() {
+      const grid = document.getElementById('charactersGrid');
+      grid.innerHTML = '';
+      
+      characters.forEach(char => {
+        const card = document.createElement('div');
+        card.className = 'character-card';
+        card.dataset.id = char.id;
+        card.onclick = () => selectCharacter(char);
+        
+        card.innerHTML = `
+          <div class="character-icon" style="color: ${char.color}">⚔️</div>
+          <div class="character-name">${char.name}</div>
+          <div class="character-stats">
+            ❤️ ${char.hp} | ⚡ ${char.damage}<br>
+            🏃 ${char.speed} | 🔄 ${char.reloadSpeed}
+          </div>
+        `;
+        
+        if (char.id === selectedCharacter.id) {
+          card.classList.add('selected');
+        }
+        
+        grid.appendChild(card);
+      });
+      
+      document.getElementById('collectionOverlay').style.display = 'block';
+    }
+
+    function closeCollection() {
+      document.getElementById('collectionOverlay').style.display = 'none';
+    }
+
+    function showLogin() {
+      alert('Функция входа будет добавлена позже');
+    }
+
+    function saveNickname() {
+      const nickname = document.getElementById('nicknameInput').value.trim();
+      if (!nickname) {
+        alert('Введите никнейм!');
+        return;
+      }
+      playerNickname = nickname;
+      localStorage.setItem('playerNickname', nickname);
+      document.getElementById('nicknameScreen').style.display = 'none';
+      document.getElementById('lobbyScreen').style.display = 'block';
+      document.getElementById('lobbyProfile').textContent = nickname[0].toUpperCase();
+    }
+
     // ========== PWA ==========
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
     let deferredPrompt;
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e;
-      document.getElementById('installBtn').classList.remove('hidden');
+      e.preventDefault(); 
+      deferredPrompt = e;
+      document.getElementById('installBtn').style.display = 'block';
     });
+
     window.installApp = async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') document.getElementById('installBtn').classList.add('hidden');
+      if (outcome === 'accepted') {
+        document.getElementById('installBtn').style.display = 'none';
+      }
       deferredPrompt = null;
     };
+
     window.addEventListener('appinstalled', () => {
-      document.getElementById('installBtn').classList.add('hidden');
-      document.getElementById('openBtn').classList.remove('hidden');
+      document.getElementById('installBtn').style.display = 'none';
+      document.getElementById('welcomeScreen').style.display = 'none';
+      checkFirstLaunch();
     });
 
+    function checkFirstLaunch() {
+      const hasNickname = localStorage.getItem('playerNickname');
+      if (hasNickname) {
+        playerNickname = hasNickname;
+        document.getElementById('nicknameScreen').style.display = 'none';
+        document.getElementById('lobbyScreen').style.display = 'block';
+        document.getElementById('lobbyProfile').textContent = playerNickname[0].toUpperCase();
+      } else {
+        document.getElementById('nicknameScreen').style.display = 'flex';
+      }
+    }
+
     if (isStandalone) {
-      document.getElementById('welcomeScreen').classList.add('hidden');
-      document.getElementById('gameContainer').style.display = 'block';
-      startGame();
+      document.getElementById('welcomeScreen').style.display = 'none';
+      checkFirstLaunch();
     } else {
       document.getElementById('welcomeScreen').style.display = 'flex';
-      document.getElementById('openBtn').classList.remove('hidden');
     }
 
     window.startGame = () => {
-      document.getElementById('welcomeScreen').classList.add('hidden');
+      document.getElementById('lobbyScreen').style.display = 'none';
       document.getElementById('gameContainer').style.display = 'block';
+      document.getElementById('gameUI').style.display = 'block';
       initGame();
     };
 
@@ -156,12 +791,14 @@
     const W = window.innerWidth, H = window.innerHeight;
 
     function initGame() {
-      // Three.js сцена
+      // Используем характеристики выбранного персонажа
+      maxHP = selectedCharacter.hp;
+      playerHP = maxHP;
+      
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87CEEB);
       scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
       
-      // Камера сверху
       camera = new THREE.PerspectiveCamera(60, W / H, 1, 1000);
       camera.position.set(0, 45, 35);
       camera.lookAt(0, 0, 0);
@@ -172,17 +809,18 @@
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       document.getElementById('gameContainer').prepend(renderer.domElement);
       
-      // Освещение
       const light = new THREE.DirectionalLight(0xffffff, 1);
       light.position.set(20, 30, 10);
       light.castShadow = true;
-      light.shadow.camera.left = -50; light.shadow.camera.right = 50;
-      light.shadow.camera.top = 50; light.shadow.camera.bottom = -50;
-      light.shadow.mapSize.width = 1024; light.shadow.mapSize.height = 1024;
+      light.shadow.camera.left = -50; 
+      light.shadow.camera.right = 50;
+      light.shadow.camera.top = 50; 
+      light.shadow.camera.bottom = -50;
+      light.shadow.mapSize.width = 1024; 
+      light.shadow.mapSize.height = 1024;
       scene.add(light);
       scene.add(new THREE.AmbientLight(0x404040));
       
-      // Земля (зелёная трава)
       const groundGeo = new THREE.PlaneGeometry(80, 80);
       const groundMat = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -190,7 +828,6 @@
       ground.receiveShadow = true;
       scene.add(ground);
       
-      // Препятствия (как в Brawl Stars)
       const obstacles = [
         { x: -15, z: -15 }, { x: 15, z: 15 }, { x: -15, z: 15 }, { x: 15, z: -15 },
         { x: 0, z: -20 }, { x: 0, z: 20 }, { x: -20, z: 0 }, { x: 20, z: 0 }
@@ -205,7 +842,6 @@
         box.receiveShadow = true;
         scene.add(box);
         
-        // Кусты сверху
         const bushGeo = new THREE.SphereGeometry(1.8, 8, 8);
         const bushMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
         const bush = new THREE.Mesh(bushGeo, bushMat);
@@ -214,18 +850,20 @@
         scene.add(bush);
       });
       
-      // Игрок (синий персонаж)
-      player = createCharacter(0x4488ff, 0, 0);
+      // Используем цвет выбранного персонажа
+      const playerColor = parseInt(selectedCharacter.color.replace('#', ''), 16);
+      player = createCharacter(playerColor, 0, 0);
       
-      // Враги
       enemies = [];
       for (let i = 0; i < 4; i++) {
         const ex = (Math.random() - 0.5) * 50;
         const ez = (Math.random() - 0.5) * 50;
         enemies.push({
           mesh: createCharacter(0xff4444, ex, ez),
-          hp: 60, maxHp: 60,
-          alive: true, respawnTimer: 0,
+          hp: 60, 
+          maxHp: 60,
+          alive: true, 
+          respawnTimer: 0,
           shootCooldown: 0
         });
       }
@@ -234,7 +872,6 @@
       score = 0;
       gameTime = 120;
       gameRunning = true;
-      playerHP = maxHP;
       
       document.getElementById('gameOver').style.display = 'none';
       document.getElementById('hpFill').style.width = '100%';
@@ -254,7 +891,6 @@
     function createCharacter(color, x, z) {
       const group = new THREE.Group();
       
-      // Тело
       const bodyGeo = new THREE.CylinderGeometry(1, 1.2, 2, 8);
       const bodyMat = new THREE.MeshLambertMaterial({ color });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -262,7 +898,6 @@
       body.castShadow = true;
       group.add(body);
       
-      // Голова
       const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
       const headMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
       const head = new THREE.Mesh(headGeo, headMat);
@@ -270,7 +905,6 @@
       head.castShadow = true;
       group.add(head);
       
-      // Глаза
       const eyeGeo = new THREE.SphereGeometry(0.15, 6, 6);
       const eyeMat = new THREE.MeshLambertMaterial({ color: 0x000000 });
       const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -285,7 +919,6 @@
       return group;
     }
 
-    // ========== ДЖОЙСТИКИ ==========
     function setupJoysticks() {
       setupJoystick('moveBase', 'moveThumb', (angle) => { moveAngle = angle; });
       setupJoystick('attackBase', 'attackThumb', (angle) => { attackAngle = angle; });
@@ -297,7 +930,8 @@
       let active = false;
       
       base.addEventListener('touchstart', (e) => {
-        e.preventDefault(); active = true;
+        e.preventDefault(); 
+        active = true;
         updateJoystick(e.touches[0], base, thumb, callback);
       });
       base.addEventListener('touchmove', (e) => {
@@ -305,7 +939,8 @@
         if (active) updateJoystick(e.touches[0], base, thumb, callback);
       });
       base.addEventListener('touchend', (e) => {
-        e.preventDefault(); active = false;
+        e.preventDefault(); 
+        active = false;
         thumb.style.transform = 'translate(-50%, -50%)';
         callback(null);
       });
@@ -325,46 +960,140 @@
       callback(dist > 10 ? angle : null);
     }
 
-    // ========== АНИМАЦИЯ ==========
+    function createBullet(x, y, z, vx, vz, color, damage) {
+      const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
+      const bulletMat = new THREE.MeshLambertMaterial({ color });
+      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+      bullet.position.set(x, y, z);
+      bullet.userData = {
+        vx, vz,
+        life: 60,
+        damage: damage
+      };
+      scene.add(bullet);
+      bullets.push(bullet);
+    }
+
+    function shootWithType(type, origin, angle, damage) {
+      switch(type) {
+        case 'projectile':
+          createBullet(
+            origin.x + Math.cos(angle) * 2,
+            1.5,
+            origin.z + Math.sin(angle) * 2,
+            Math.cos(angle) * 0.6,
+            Math.sin(angle) * 0.6,
+            0xffd93d,
+            damage
+          );
+          break;
+          
+        case 'spread':
+          for (let i = -1; i <= 1; i++) {
+            const spreadAngle = angle + (i * 0.2);
+            createBullet(
+              origin.x + Math.cos(spreadAngle) * 2,
+              1.5,
+              origin.z + Math.sin(spreadAngle) * 2,
+              Math.cos(spreadAngle) * 0.5,
+              Math.sin(spreadAngle) * 0.5,
+              0xffd93d,
+              damage / 2
+            );
+          }
+          break;
+          
+        case 'explosive':
+          const bullet = createBulletReturn(
+            origin.x + Math.cos(angle) * 2,
+            1.5,
+            origin.z + Math.sin(angle) * 2,
+            Math.cos(angle) * 0.4,
+            Math.sin(angle) * 0.4,
+            0xff6600,
+            damage * 2
+          );
+          bullet.userData.explosive = true;
+          bullet.userData.explosionRadius = 3;
+          break;
+          
+        case 'laser':
+          // Мгновенный луч - наносим урон всем врагам в линии
+          enemies.forEach(enemy => {
+            if (!enemy.alive) return;
+            const dx = enemy.mesh.position.x - origin.x;
+            const dz = enemy.mesh.position.z - origin.z;
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            const angleToEnemy = Math.atan2(dz, dx);
+            const angleDiff = Math.abs(angle - angleToEnemy);
+            
+            if (dist < 10 && angleDiff < 0.3) {
+              enemy.hp -= damage;
+              if (enemy.hp <= 0) {
+                enemy.alive = false;
+                enemy.mesh.visible = false;
+                enemy.respawnTimer = 120;
+                score += 10;
+                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
+              }
+            }
+          });
+          // Визуальный эффект лазера
+          const laserGeo = new THREE.CylinderGeometry(0.1, 0.1, 10, 8);
+          const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+          const laser = new THREE.Mesh(laserGeo, laserMat);
+          laser.position.copy(origin);
+          laser.rotation.z = Math.PI / 2;
+          laser.rotation.y = angle;
+          scene.add(laser);
+          setTimeout(() => scene.remove(laser), 100);
+          break;
+      }
+    }
+
+    function createBulletReturn(x, y, z, vx, vz, color, damage) {
+      const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
+      const bulletMat = new THREE.MeshLambertMaterial({ color });
+      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+      bullet.position.set(x, y, z);
+      bullet.userData = {
+        vx, vz,
+        life: 60,
+        damage: damage
+      };
+      scene.add(bullet);
+      bullets.push(bullet);
+      return bullet;
+    }
+
     function animate() {
       if (!gameRunning) return;
       requestAnimationFrame(animate);
       
-      // Движение игрока
+      // Движение игрока с использованием скорости персонажа
       if (moveAngle !== null) {
-        player.position.x += Math.cos(moveAngle) * 0.15;
-        player.position.z += Math.sin(moveAngle) * 0.15;
-        // Границы
+        player.position.x += Math.cos(moveAngle) * selectedCharacter.speed;
+        player.position.z += Math.sin(moveAngle) * selectedCharacter.speed;
         player.position.x = Math.max(-35, Math.min(35, player.position.x));
         player.position.z = Math.max(-35, Math.min(35, player.position.z));
       }
       
-      // Камера следует за игроком
       camera.position.x = player.position.x;
       camera.position.z = player.position.z + 35;
       camera.lookAt(player.position.x, 0, player.position.z);
       
-      // Атака
+      // Атака с использованием типа атаки персонажа
       if (attackAngle !== null && player && gameRunning) {
-        const bx = player.position.x + Math.cos(attackAngle) * 2;
-        const bz = player.position.z + Math.sin(attackAngle) * 2;
-        
-        // Проверяем кулдаун
         if (!player.userData?.shootCooldown || player.userData.shootCooldown <= 0) {
-          const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
-          const bulletMat = new THREE.MeshLambertMaterial({ color: 0xffd93d });
-          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-          bullet.position.set(bx, 1.5, bz);
-          bullet.userData = {
-            vx: Math.cos(attackAngle) * 0.6,
-            vz: Math.sin(attackAngle) * 0.6,
-            life: 60
-          };
-          scene.add(bullet);
-          bullets.push(bullet);
+          shootWithType(
+            selectedCharacter.attackType,
+            player.position,
+            attackAngle,
+            selectedCharacter.damage
+          );
           
           if (!player.userData) player.userData = {};
-          player.userData.shootCooldown = 10;
+          player.userData.shootCooldown = selectedCharacter.reloadSpeed;
         }
       }
       
@@ -396,35 +1125,34 @@
         
         enemy.mesh.lookAt(player.position.x, 0, player.position.z);
         
-        // Враги стреляют
         if (dist < 25 && enemy.shootCooldown <= 0) {
           const angle = Math.atan2(dz, dx);
-          const bulletGeo = new THREE.SphereGeometry(0.25, 6, 6);
-          const bulletMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-          bullet.position.copy(enemy.mesh.position);
-          bullet.position.y = 1.5;
-          bullet.userData = { vx: Math.cos(angle)*0.4, vz: Math.sin(angle)*0.4, life: 80 };
-          scene.add(bullet);
-          bullets.push(bullet);
+          createBullet(
+            enemy.mesh.position.x, 1.5, enemy.mesh.position.z,
+            Math.cos(angle)*0.4, Math.sin(angle)*0.4,
+            0xff0000, 10
+          );
           enemy.shootCooldown = 60;
         }
         if (enemy.shootCooldown > 0) enemy.shootCooldown--;
       });
       
-      // Пули
+      // Обработка пуль
       bullets = bullets.filter(b => {
         b.position.x += b.userData.vx;
         b.position.z += b.userData.vz;
         b.userData.life--;
         
-        if (b.userData.life <= 0) { scene.remove(b); return false; }
+        if (b.userData.life <= 0) { 
+          scene.remove(b); 
+          return false; 
+        }
         
         // Попадание в игрока
         if (b.material.color.getHex() === 0xff0000) {
           const d = player.position.distanceTo(b.position);
           if (d < 2) {
-            playerHP -= 10;
+            playerHP -= b.userData.damage || 10;
             document.getElementById('hpFill').style.width = (playerHP/maxHP*100)+'%';
             scene.remove(b);
             if (playerHP <= 0) endGame();
@@ -433,12 +1161,26 @@
         }
         
         // Попадание во врагов
-        if (b.material.color.getHex() === 0xffd93d) {
+        if (b.material.color.getHex() === 0xffd93d || b.material.color.getHex() === 0xff6600) {
           for (let enemy of enemies) {
             if (!enemy.alive) continue;
             const d = enemy.mesh.position.distanceTo(b.position);
+            
+            // Проверка на взрывной урон
+            if (b.userData.explosive && d < b.userData.explosionRadius) {
+              enemy.hp -= b.userData.damage;
+              if (enemy.hp <= 0) {
+                enemy.alive = false;
+                enemy.mesh.visible = false;
+                enemy.respawnTimer = 120;
+                score += 10;
+                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
+              }
+              continue;
+            }
+            
             if (d < 2.5) {
-              enemy.hp -= 20;
+              enemy.hp -= b.userData.damage || 20;
               scene.remove(b);
               if (enemy.hp <= 0) {
                 enemy.alive = false;
@@ -469,10 +1211,36 @@
     window.restartGame = () => {
       clearInterval(timerInterval);
       while(scene.children.length > 0) scene.remove(scene.children[0]);
-      enemies = []; bullets = [];
+      enemies = []; 
+      bullets = [];
       document.getElementById('gameOver').style.display = 'none';
       initGame();
     };
+
+    // Инициализация
+    loadCharacters();
+    
+    // Добавляем обработчик для кнопки "Играть" в лобби
+    document.addEventListener('DOMContentLoaded', () => {
+      const playBtn = document.createElement('button');
+      playBtn.textContent = '🎮 ИГРАТЬ';
+      playBtn.style.cssText = `
+        position: absolute;
+        bottom: 50px;
+        right: 30px;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 20px 50px;
+        border-radius: 50px;
+        font-size: 1.3rem;
+        cursor: pointer;
+        border: none;
+        font-weight: 700;
+        z-index: 600;
+      `;
+      playBtn.onclick = startGame;
+      document.getElementById('lobbyScreen').appendChild(playBtn);
+    });
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
