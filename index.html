@@ -24,7 +24,6 @@
       position: fixed;
     }
     
-    /* Принудительная ландшафтная ориентация */
     @media screen and (orientation: portrait) {
       body::before {
         content: "Пожалуйста, поверните устройство";
@@ -102,7 +101,6 @@
       height: 100vh; 
     }
     
-    /* Экран ввода ника */
     .nickname-screen {
       display: none;
       position: fixed;
@@ -131,10 +129,6 @@
       outline: none;
     }
     
-    .nickname-input::placeholder {
-      color: rgba(255,255,255,0.5);
-    }
-    
     .confirm-btn {
       background: linear-gradient(135deg, #6bcb77, #4d96ff);
       color: white;
@@ -146,7 +140,6 @@
       font-weight: 700;
     }
     
-    /* Лобби */
     .lobby-screen {
       display: none;
       position: fixed;
@@ -215,7 +208,6 @@
       color: white;
     }
     
-    /* Коллекция персонажей */
     .collection-overlay {
       display: none;
       position: fixed;
@@ -266,11 +258,6 @@
       transition: all 0.3s;
     }
     
-    .character-card:hover {
-      border-color: #ffd93d;
-      transform: scale(1.05);
-    }
-    
     .character-card.selected {
       border-color: #4d96ff;
       background: rgba(77,150,255,0.2);
@@ -286,12 +273,6 @@
       margin-bottom: 5px;
     }
     
-    .character-stats {
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
-    
-    /* Экран создания персонажа */
     .create-character-screen {
       display: none;
       position: fixed;
@@ -306,9 +287,18 @@
       overflow-y: auto;
     }
     
-    .create-form {
-      max-width: 400px;
-      margin: 0 auto;
+    .code-editor {
+      width: 100%;
+      min-height: 300px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #444;
+      border-radius: 10px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: vertical;
+      margin: 10px 0;
     }
     
     .form-group {
@@ -510,7 +500,7 @@
       <button class="close-collection" onclick="closeCollection()">✕</button>
     </div>
     <div class="characters-grid" id="charactersGrid"></div>
-    <button class="save-character-btn" onclick="openCreateCharacter()" style="margin-top: 20px;">+ Создать персонажа</button>
+    <button class="save-character-btn" onclick="openCreateCharacter()" style="margin-top: 20px;">+ Создать персонажа (код)</button>
   </div>
 
   <!-- СОЗДАНИЕ ПЕРСОНАЖА -->
@@ -524,35 +514,41 @@
         <label>Имя персонажа</label>
         <input type="text" id="charName" placeholder="Введите имя">
       </div>
+      
       <div class="form-group">
-        <label>Здоровье (HP)</label>
-        <input type="number" id="charHP" placeholder="Например: 100" min="1">
+        <label>3D Модель (JavaScript код)</label>
+        <textarea id="charModel" class="code-editor" placeholder="Код для создания 3D модели..."></textarea>
+        <small style="color: #888;">Функция createModel(scene, color) - должна возвращать THREE.Group</small>
       </div>
+      
       <div class="form-group">
-        <label>Урон</label>
-        <input type="number" id="charDamage" placeholder="Например: 20" min="1">
+        <label>Основная атака (JavaScript код)</label>
+        <textarea id="charAttack" class="code-editor" placeholder="Код атаки..."></textarea>
+        <small style="color: #888;">Функция attack(player, enemies, bullets, scene, angle, damage) - вызывается при нажатии</small>
       </div>
+      
       <div class="form-group">
-        <label>Скорость передвижения</label>
-        <input type="number" id="charSpeed" placeholder="Например: 0.15" step="0.01" min="0.01">
+        <label>Особая способность (JavaScript код)</label>
+        <textarea id="charAbility" class="code-editor" placeholder="Код способности..."></textarea>
+        <small style="color: #888;">Функция ability(player, enemies, scene) - особая механика персонажа</small>
       </div>
+      
       <div class="form-group">
-        <label>Скорость перезарядки (в кадрах)</label>
-        <input type="number" id="charReload" placeholder="Например: 10" min="1">
+        <label>Пассивная особенность (JavaScript код)</label>
+        <textarea id="charPassive" class="code-editor" placeholder="Код пассивки..."></textarea>
+        <small style="color: #888;">Функция passive(player) - вызывается каждый кадр</small>
       </div>
+      
       <div class="form-group">
-        <label>Тип атаки</label>
-        <select id="charAttackType">
-          <option value="projectile">Снаряд (летит прямо)</option>
-          <option value="spread">Дробь (3 снаряда веером)</option>
-          <option value="explosive">Взрывной (урон по области)</option>
-          <option value="laser">Лазер (мгновенный луч)</option>
-        </select>
+        <label>Базовые характеристики (JSON)</label>
+        <textarea id="charStats" class="code-editor" style="min-height: 100px;">{
+  "hp": 100,
+  "speed": 0.15,
+  "reloadSpeed": 10,
+  "color": "#4488ff"
+}</textarea>
       </div>
-      <div class="form-group">
-        <label>Цвет персонажа (HEX)</label>
-        <input type="color" id="charColor" value="#4488ff">
-      </div>
+      
       <button class="save-character-btn" onclick="saveCharacter()">Сохранить персонажа</button>
     </div>
   </div>
@@ -589,18 +585,68 @@
   </div>
 
   <script>
-    // ========== СИСТЕМА ПЕРСОНАЖЕЙ ==========
-    // Хранилище персонажей (в реальном приложении использовать localStorage или БД)
+    // ========== СИСТЕМА ПЕРСОНАЖЕЙ С КАСТОМНЫМ КОДОМ ==========
     let characters = [
       {
         id: 'default',
         name: 'Боец',
-        hp: 100,
-        damage: 20,
-        speed: 0.15,
-        reloadSpeed: 10,
-        attackType: 'projectile',
-        color: '#4488ff',
+        stats: {
+          hp: 100,
+          speed: 0.15,
+          reloadSpeed: 10,
+          color: '#4488ff'
+        },
+        modelCode: `
+          function createModel(scene, color) {
+            const group = new THREE.Group();
+            
+            const bodyGeo = new THREE.CylinderGeometry(1, 1.2, 2, 8);
+            const bodyMat = new THREE.MeshLambertMaterial({ color });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1;
+            body.castShadow = true;
+            group.add(body);
+            
+            const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 2.4;
+            head.castShadow = true;
+            group.add(head);
+            
+            return group;
+          }
+        `,
+        attackCode: `
+          function attack(player, enemies, bullets, scene, angle, damage) {
+            const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
+            const bulletMat = new THREE.MeshLambertMaterial({ color: 0xffd93d });
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            bullet.position.set(
+              player.position.x + Math.cos(angle) * 2,
+              1.5,
+              player.position.z + Math.sin(angle) * 2
+            );
+            bullet.userData = {
+              vx: Math.cos(angle) * 0.6,
+              vz: Math.sin(angle) * 0.6,
+              life: 60,
+              damage: damage
+            };
+            scene.add(bullet);
+            bullets.push(bullet);
+          }
+        `,
+        abilityCode: `
+          function ability(player, enemies, scene) {
+            // Нет особой способности
+          }
+        `,
+        passiveCode: `
+          function passive(player) {
+            // Нет пассивной способности
+          }
+        `,
         isDefault: true
       }
     ];
@@ -610,14 +656,18 @@
 
     // Загрузка сохраненных персонажей
     function loadCharacters() {
-      const saved = localStorage.getItem('brawlCharacters');
+      const saved = localStorage.getItem('brawlCharactersCustom');
       if (saved) {
-        characters = JSON.parse(saved);
+        try {
+          characters = JSON.parse(saved);
+        } catch(e) {
+          console.error('Ошибка загрузки персонажей:', e);
+        }
       }
     }
 
     function saveCharacters() {
-      localStorage.setItem('brawlCharacters', JSON.stringify(characters));
+      localStorage.setItem('brawlCharactersCustom', JSON.stringify(characters));
     }
 
     function openCreateCharacter() {
@@ -632,39 +682,49 @@
 
     function saveCharacter() {
       const name = document.getElementById('charName').value;
-      const hp = parseInt(document.getElementById('charHP').value);
-      const damage = parseInt(document.getElementById('charDamage').value);
-      const speed = parseFloat(document.getElementById('charSpeed').value);
-      const reload = parseInt(document.getElementById('charReload').value);
-      const attackType = document.getElementById('charAttackType').value;
-      const color = document.getElementById('charColor').value;
+      const modelCode = document.getElementById('charModel').value;
+      const attackCode = document.getElementById('charAttack').value;
+      const abilityCode = document.getElementById('charAbility').value;
+      const passiveCode = document.getElementById('charPassive').value;
+      const statsCode = document.getElementById('charStats').value;
 
-      if (!name || !hp || !damage || !speed || !reload) {
-        alert('Заполните все поля!');
+      if (!name || !attackCode) {
+        alert('Минимум: имя и код атаки обязательны!');
+        return;
+      }
+
+      let stats;
+      try {
+        stats = JSON.parse(statsCode);
+      } catch(e) {
+        alert('Ошибка в JSON характеристик!');
+        return;
+      }
+
+      // Проверяем валидность кода
+      try {
+        if (modelCode) new Function('THREE', 'return ' + modelCode)(THREE);
+        new Function('player', 'enemies', 'bullets', 'scene', 'angle', 'damage', attackCode);
+        if (abilityCode) new Function('player', 'enemies', 'scene', abilityCode);
+        if (passiveCode) new Function('player', passiveCode);
+      } catch(e) {
+        alert('Ошибка в коде: ' + e.message);
         return;
       }
 
       const newCharacter = {
         id: Date.now().toString(),
         name,
-        hp,
-        damage,
-        speed,
-        reloadSpeed: reload,
-        attackType,
-        color,
+        stats,
+        modelCode,
+        attackCode,
+        abilityCode,
+        passiveCode,
         isDefault: false
       };
 
       characters.push(newCharacter);
       saveCharacters();
-      
-      // Очистка полей
-      document.getElementById('charName').value = '';
-      document.getElementById('charHP').value = '';
-      document.getElementById('charDamage').value = '';
-      document.getElementById('charSpeed').value = '';
-      document.getElementById('charReload').value = '';
       
       closeCreateCharacter();
       alert(`Персонаж "${name}" создан!`);
@@ -691,11 +751,10 @@
         card.onclick = () => selectCharacter(char);
         
         card.innerHTML = `
-          <div class="character-icon" style="color: ${char.color}">⚔️</div>
+          <div class="character-icon" style="color: ${char.stats.color}">⚔️</div>
           <div class="character-name">${char.name}</div>
           <div class="character-stats">
-            ❤️ ${char.hp} | ⚡ ${char.damage}<br>
-            🏃 ${char.speed} | 🔄 ${char.reloadSpeed}
+            ❤️ ${char.stats.hp} | 🏃 ${char.stats.speed}
           </div>
         `;
         
@@ -775,12 +834,16 @@
       document.getElementById('welcomeScreen').style.display = 'flex';
     }
 
-    window.startGame = () => {
-      document.getElementById('lobbyScreen').style.display = 'none';
-      document.getElementById('gameContainer').style.display = 'block';
-      document.getElementById('gameUI').style.display = 'block';
-      initGame();
-    };
+    // ========== КОМПИЛЯЦИЯ ФУНКЦИЙ ПЕРСОНАЖА ==========
+    function compileCharacterFunctions() {
+      const char = selectedCharacter;
+      return {
+        createModel: char.modelCode ? new Function('THREE', 'return ' + char.modelCode)(THREE) : null,
+        attack: new Function('player', 'enemies', 'bullets', 'scene', 'angle', 'damage', char.attackCode),
+        ability: char.abilityCode ? new Function('player', 'enemies', 'scene', char.abilityCode) : null,
+        passive: char.passiveCode ? new Function('player', char.passiveCode) : null
+      };
+    }
 
     // ========== 3D ИГРА ==========
     let scene, camera, renderer;
@@ -788,11 +851,19 @@
     let moveAngle = null, attackAngle = null;
     let score = 0, gameTime = 120, gameRunning = false, timerInterval;
     let playerHP = 100, maxHP = 100;
+    let charFunctions;
     const W = window.innerWidth, H = window.innerHeight;
 
+    window.startGame = () => {
+      document.getElementById('lobbyScreen').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'block';
+      document.getElementById('gameUI').style.display = 'block';
+      initGame();
+    };
+
     function initGame() {
-      // Используем характеристики выбранного персонажа
-      maxHP = selectedCharacter.hp;
+      charFunctions = compileCharacterFunctions();
+      maxHP = selectedCharacter.stats.hp;
       playerHP = maxHP;
       
       scene = new THREE.Scene();
@@ -802,6 +873,10 @@
       camera = new THREE.PerspectiveCamera(60, W / H, 1, 1000);
       camera.position.set(0, 45, 35);
       camera.lookAt(0, 0, 0);
+      
+      // Удаляем старый renderer если есть
+      const oldCanvas = document.querySelector('canvas');
+      if (oldCanvas) oldCanvas.remove();
       
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(W, H);
@@ -850,16 +925,23 @@
         scene.add(bush);
       });
       
-      // Используем цвет выбранного персонажа
-      const playerColor = parseInt(selectedCharacter.color.replace('#', ''), 16);
-      player = createCharacter(playerColor, 0, 0);
+      // Используем кастомную модель или дефолтную
+      const playerColor = parseInt(selectedCharacter.stats.color.replace('#', ''), 16);
+      if (charFunctions.createModel) {
+        player = charFunctions.createModel(scene, playerColor);
+      } else {
+        player = createDefaultModel(playerColor);
+      }
+      player.position.set(0, 0, 0);
       
       enemies = [];
       for (let i = 0; i < 4; i++) {
         const ex = (Math.random() - 0.5) * 50;
         const ez = (Math.random() - 0.5) * 50;
+        const enemyMesh = createDefaultModel(0xff4444);
+        enemyMesh.position.set(ex, 0, ez);
         enemies.push({
-          mesh: createCharacter(0xff4444, ex, ez),
+          mesh: enemyMesh,
           hp: 60, 
           maxHp: 60,
           alive: true, 
@@ -888,7 +970,7 @@
       animate();
     }
 
-    function createCharacter(color, x, z) {
+    function createDefaultModel(color) {
       const group = new THREE.Group();
       
       const bodyGeo = new THREE.CylinderGeometry(1, 1.2, 2, 8);
@@ -914,7 +996,6 @@
       rightEye.position.set(0.2, 2.5, 0.6);
       group.add(rightEye);
       
-      group.position.set(x, 0, z);
       scene.add(group);
       return group;
     }
@@ -960,120 +1041,19 @@
       callback(dist > 10 ? angle : null);
     }
 
-    function createBullet(x, y, z, vx, vz, color, damage) {
-      const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
-      const bulletMat = new THREE.MeshLambertMaterial({ color });
-      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-      bullet.position.set(x, y, z);
-      bullet.userData = {
-        vx, vz,
-        life: 60,
-        damage: damage
-      };
-      scene.add(bullet);
-      bullets.push(bullet);
-    }
-
-    function shootWithType(type, origin, angle, damage) {
-      switch(type) {
-        case 'projectile':
-          createBullet(
-            origin.x + Math.cos(angle) * 2,
-            1.5,
-            origin.z + Math.sin(angle) * 2,
-            Math.cos(angle) * 0.6,
-            Math.sin(angle) * 0.6,
-            0xffd93d,
-            damage
-          );
-          break;
-          
-        case 'spread':
-          for (let i = -1; i <= 1; i++) {
-            const spreadAngle = angle + (i * 0.2);
-            createBullet(
-              origin.x + Math.cos(spreadAngle) * 2,
-              1.5,
-              origin.z + Math.sin(spreadAngle) * 2,
-              Math.cos(spreadAngle) * 0.5,
-              Math.sin(spreadAngle) * 0.5,
-              0xffd93d,
-              damage / 2
-            );
-          }
-          break;
-          
-        case 'explosive':
-          const bullet = createBulletReturn(
-            origin.x + Math.cos(angle) * 2,
-            1.5,
-            origin.z + Math.sin(angle) * 2,
-            Math.cos(angle) * 0.4,
-            Math.sin(angle) * 0.4,
-            0xff6600,
-            damage * 2
-          );
-          bullet.userData.explosive = true;
-          bullet.userData.explosionRadius = 3;
-          break;
-          
-        case 'laser':
-          // Мгновенный луч - наносим урон всем врагам в линии
-          enemies.forEach(enemy => {
-            if (!enemy.alive) return;
-            const dx = enemy.mesh.position.x - origin.x;
-            const dz = enemy.mesh.position.z - origin.z;
-            const dist = Math.sqrt(dx*dx + dz*dz);
-            const angleToEnemy = Math.atan2(dz, dx);
-            const angleDiff = Math.abs(angle - angleToEnemy);
-            
-            if (dist < 10 && angleDiff < 0.3) {
-              enemy.hp -= damage;
-              if (enemy.hp <= 0) {
-                enemy.alive = false;
-                enemy.mesh.visible = false;
-                enemy.respawnTimer = 120;
-                score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
-              }
-            }
-          });
-          // Визуальный эффект лазера
-          const laserGeo = new THREE.CylinderGeometry(0.1, 0.1, 10, 8);
-          const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-          const laser = new THREE.Mesh(laserGeo, laserMat);
-          laser.position.copy(origin);
-          laser.rotation.z = Math.PI / 2;
-          laser.rotation.y = angle;
-          scene.add(laser);
-          setTimeout(() => scene.remove(laser), 100);
-          break;
-      }
-    }
-
-    function createBulletReturn(x, y, z, vx, vz, color, damage) {
-      const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
-      const bulletMat = new THREE.MeshLambertMaterial({ color });
-      const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-      bullet.position.set(x, y, z);
-      bullet.userData = {
-        vx, vz,
-        life: 60,
-        damage: damage
-      };
-      scene.add(bullet);
-      bullets.push(bullet);
-      return bullet;
-    }
-
     function animate() {
       if (!gameRunning) return;
       requestAnimationFrame(animate);
       
-      // Движение игрока с использованием скорости персонажа
+      // Пассивная способность
+      if (charFunctions.passive) {
+        charFunctions.passive(player);
+      }
+      
+      // Движение игрока
       if (moveAngle !== null) {
-        player.position.x += Math.cos(moveAngle) * selectedCharacter.speed;
-        player.position.z += Math.sin(moveAngle) * selectedCharacter.speed;
+        player.position.x += Math.cos(moveAngle) * selectedCharacter.stats.speed;
+        player.position.z += Math.sin(moveAngle) * selectedCharacter.stats.speed;
         player.position.x = Math.max(-35, Math.min(35, player.position.x));
         player.position.z = Math.max(-35, Math.min(35, player.position.z));
       }
@@ -1082,23 +1062,24 @@
       camera.position.z = player.position.z + 35;
       camera.lookAt(player.position.x, 0, player.position.z);
       
-      // Атака с использованием типа атаки персонажа
+      // Кастомная атака
       if (attackAngle !== null && player && gameRunning) {
         if (!player.userData?.shootCooldown || player.userData.shootCooldown <= 0) {
-          shootWithType(
-            selectedCharacter.attackType,
-            player.position,
-            attackAngle,
-            selectedCharacter.damage
-          );
+          charFunctions.attack(player, enemies, bullets, scene, attackAngle, 20);
           
           if (!player.userData) player.userData = {};
-          player.userData.shootCooldown = selectedCharacter.reloadSpeed;
+          player.userData.shootCooldown = selectedCharacter.stats.reloadSpeed;
         }
       }
       
       if (player.userData?.shootCooldown > 0) {
         player.userData.shootCooldown--;
+      }
+      
+      // Особая способность (активируется двойным тапом)
+      if (player.userData?.abilityReady && charFunctions.ability) {
+        charFunctions.ability(player, enemies, scene);
+        player.userData.abilityReady = false;
       }
       
       // Движение врагов
@@ -1127,11 +1108,14 @@
         
         if (dist < 25 && enemy.shootCooldown <= 0) {
           const angle = Math.atan2(dz, dx);
-          createBullet(
-            enemy.mesh.position.x, 1.5, enemy.mesh.position.z,
-            Math.cos(angle)*0.4, Math.sin(angle)*0.4,
-            0xff0000, 10
-          );
+          const bulletGeo = new THREE.SphereGeometry(0.25, 6, 6);
+          const bulletMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+          bullet.position.copy(enemy.mesh.position);
+          bullet.position.y = 1.5;
+          bullet.userData = { vx: Math.cos(angle)*0.4, vz: Math.sin(angle)*0.4, life: 80, damage: 10 };
+          scene.add(bullet);
+          bullets.push(bullet);
           enemy.shootCooldown = 60;
         }
         if (enemy.shootCooldown > 0) enemy.shootCooldown--;
@@ -1160,24 +1144,11 @@
           }
         }
         
-        // Попадание во врагов
-        if (b.material.color.getHex() === 0xffd93d || b.material.color.getHex() === 0xff6600) {
+        // Попадание во врагов (любые не красные пули)
+        if (b.material.color.getHex() !== 0xff0000) {
           for (let enemy of enemies) {
             if (!enemy.alive) continue;
             const d = enemy.mesh.position.distanceTo(b.position);
-            
-            // Проверка на взрывной урон
-            if (b.userData.explosive && d < b.userData.explosionRadius) {
-              enemy.hp -= b.userData.damage;
-              if (enemy.hp <= 0) {
-                enemy.alive = false;
-                enemy.mesh.visible = false;
-                enemy.respawnTimer = 120;
-                score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
-              }
-              continue;
-            }
             
             if (d < 2.5) {
               enemy.hp -= b.userData.damage || 20;
@@ -1220,7 +1191,6 @@
     // Инициализация
     loadCharacters();
     
-    // Добавляем обработчик для кнопки "Играть" в лобби
     document.addEventListener('DOMContentLoaded', () => {
       const playBtn = document.createElement('button');
       playBtn.textContent = '🎮 ИГРАТЬ';
