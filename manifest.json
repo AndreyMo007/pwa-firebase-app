@@ -1,11 +1,11 @@
 {
-  "name": "Моё PWA Приложение",
-  "short_name": "PWA App",
-  "description": "Моё крутое PWA приложение с Firebase",
+  "name": "MAS",
+  "short_name": "MAS",
+  "description": "Мессенджер",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e1e2f",
-  "theme_color": "#1e1e2f",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "orientation": "portrait-primary",
   "icons": [
     {
