@@ -4,227 +4,139 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <meta name="description" content="Brawl Arena - Мобильная арена">
-  <title>Brawl Arena</title>
+  <meta name="description" content="3D Brawl Arena">
+  <title>3D Brawl Arena</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: #000; 
-      overflow: hidden; 
-      touch-action: none; 
-      user-select: none; 
-      -webkit-user-select: none;
-      font-family: 'Arial', sans-serif;
-      height: 100vh;
-      width: 100vw;
-    }
+    body { background: #000; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; height: 100vh; width: 100vw; font-family: Arial, sans-serif; }
     
-    /* САЙТ - ПРИВЕТСТВИЕ */
     .welcome-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      background: linear-gradient(135deg, #1a0033, #0a0a2e);
-      color: white;
-      padding: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; text-align: center; background: linear-gradient(135deg, #1a0033, #0a0a2e);
+      color: white; padding: 20px;
     }
     .welcome-screen .logo { font-size: 100px; animation: bounce 1.5s infinite; }
     @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-30px)} }
-    .welcome-screen h1 { 
-      font-size: 3rem; 
-      background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      margin: 20px 0;
-    }
+    .welcome-screen h1 { font-size: 3rem; background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 20px 0; }
     .welcome-screen p { opacity: 0.8; margin-bottom: 30px; font-size: 1.2rem; }
-    .install-btn {
-      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-      color: white; padding: 18px 50px; border-radius: 50px;
-      font-size: 1.3rem; font-weight: 700; cursor: pointer; border: none;
-      box-shadow: 0 10px 30px rgba(255,107,107,0.4);
-      animation: pulse 2s infinite; margin-bottom: 15px;
-    }
+    .install-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; padding: 18px 50px; border-radius: 50px; font-size: 1.3rem; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 10px 30px rgba(255,107,107,0.4); animation: pulse 2s infinite; margin-bottom: 15px; }
     @keyframes pulse { 0%,100%{box-shadow:0 10px 30px rgba(255,107,107,0.4)} 50%{box-shadow:0 10px 50px rgba(255,107,107,0.8)} }
-    .install-btn:active { transform: scale(0.95); }
     .open-btn { background: transparent; color: #ffd93d; padding: 14px 30px; border-radius: 50px; font-size: 1rem; cursor: pointer; border: 2px solid #ffd93d; margin-top: 10px; }
     
-    /* ИГРА */
-    .game-container {
-      display: none;
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      background: #2d5016;
-    }
-    canvas {
-      display: block;
-      position: absolute;
-      top: 0; left: 0;
-    }
+    #gameContainer { display: none; position: relative; width: 100vw; height: 100vh; }
+    canvas { display: block; }
+    
     .ui-top {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 10;
-      pointer-events: none;
+      position: absolute; top: 10px; left: 10px; right: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 10; pointer-events: none;
     }
-    .health-bar {
-      width: 150px;
-      height: 15px;
-      background: rgba(0,0,0,0.5);
-      border-radius: 10px;
-      overflow: hidden;
-      border: 2px solid white;
+    .hp-bar { width: 120px; height: 12px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 2px solid white; }
+    .hp-fill { height: 100%; background: #00ff00; transition: width 0.3s; border-radius: 10px; }
+    .score { color: #ffd93d; font-size: 18px; font-weight: bold; text-shadow: 0 0 10px rgba(255,217,61,0.5); }
+    .timer { color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 15px; }
+    
+    .joystick {
+      position: absolute; bottom: 40px; width: 130px; height: 130px; z-index: 20;
     }
-    .health-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #ff6b6b, #ff4444);
-      transition: width 0.3s;
-      border-radius: 10px;
-    }
-    .score-display {
-      color: #ffd93d;
-      font-size: 20px;
-      font-weight: bold;
-      text-shadow: 0 0 10px rgba(255,217,61,0.5);
-    }
-    .timer {
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
-      text-shadow: 0 0 10px rgba(255,255,255,0.5);
-      background: rgba(0,0,0,0.5);
-      padding: 5px 15px;
-      border-radius: 20px;
-    }
-    .joystick-area {
-      position: absolute;
-      bottom: 40px;
-      left: 40px;
-      width: 140px;
-      height: 140px;
-      z-index: 20;
-    }
+    #moveJoystick { left: 30px; }
+    #attackJoystick { right: 30px; }
     .joystick-base {
-      width: 100%;
-      height: 100%;
-      background: rgba(255,255,255,0.15);
-      border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.3);
-      position: relative;
+      width: 100%; height: 100%; background: rgba(255,255,255,0.1);
+      border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); position: relative;
     }
     .joystick-thumb {
-      width: 60px;
-      height: 60px;
-      background: rgba(255,255,255,0.5);
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 2px solid white;
+      width: 55px; height: 55px; background: rgba(255,255,255,0.4);
+      border-radius: 50%; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); border: 2px solid white; pointer-events: none;
     }
+    #moveLabel, #attackLabel {
+      position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.6); font-size: 11px; font-weight: bold; white-space: nowrap;
+    }
+    
     .game-over {
-      display: none;
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      color: white;
-      text-align: center;
+      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); z-index: 100;
+      justify-content: center; align-items: center; flex-direction: column; color: white;
     }
-    .game-over h2 { font-size: 3rem; margin-bottom: 10px; }
-    .game-over .score { font-size: 2rem; color: #ffd93d; margin-bottom: 20px; }
-    .game-over button {
-      background: linear-gradient(135deg, #6bcb77, #4d96ff);
-      color: white; padding: 15px 40px; border-radius: 50px;
-      font-size: 1.2rem; cursor: pointer; border: none; font-weight: 700;
-    }
+    .game-over h2 { font-size: 2.5rem; margin-bottom: 10px; }
+    .game-over .final-score { font-size: 2rem; color: #ffd93d; margin-bottom: 20px; }
+    .game-over button { background: #6bcb77; color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 700; }
+    
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- САЙТ - ПРИВЕТСТВИЕ -->
+  <!-- ПРИВЕТСТВИЕ -->
   <div id="welcomeScreen" class="welcome-screen">
     <div class="logo">⚔️</div>
-    <h1>Brawl Arena</h1>
-    <p>Мобильная арена с джойстиком</p>
+    <h1>3D Brawl Arena</h1>
+    <p>Два джойстика • 3D графика • Арена</p>
     <button id="installBtn" class="install-btn hidden" onclick="installApp()">📲 Установить игру</button>
     <button id="openBtn" class="open-btn hidden" onclick="startGame()">🎮 Играть в браузере</button>
-    <p style="margin-top:15px;opacity:0.5;">Установите приложение для лучшего опыта</p>
+    <p style="margin-top:15px;opacity:0.5;">Установите для лучшего опыта</p>
   </div>
 
   <!-- ИГРА -->
-  <div id="gameContainer" class="game-container">
-    <canvas id="gameCanvas"></canvas>
-    
+  <div id="gameContainer">
     <div class="ui-top">
-      <div class="health-bar"><div class="health-fill" id="healthFill" style="width:100%"></div></div>
+      <div class="hp-bar"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
       <div class="timer" id="timer">2:00</div>
-      <div class="score-display" id="scoreDisplay">🏆 0</div>
+      <div class="score" id="scoreDisplay">🏆 0</div>
     </div>
     
-    <div class="joystick-area" id="joystickArea">
-      <div class="joystick-base" id="joystickBase">
-        <div class="joystick-thumb" id="joystickThumb"></div>
+    <div class="joystick" id="moveJoystick">
+      <div id="moveLabel">ДВИЖЕНИЕ</div>
+      <div class="joystick-base" id="moveBase">
+        <div class="joystick-thumb" id="moveThumb"></div>
+      </div>
+    </div>
+    
+    <div class="joystick" id="attackJoystick">
+      <div id="attackLabel">АТАКА</div>
+      <div class="joystick-base" id="attackBase">
+        <div class="joystick-thumb" id="attackThumb"></div>
       </div>
     </div>
     
     <div class="game-over" id="gameOver">
       <h2 id="gameOverTitle">Победа!</h2>
-      <div class="score" id="gameOverScore">🏆 0</div>
+      <div class="final-score" id="gameOverScore">🏆 0</div>
       <button onclick="restartGame()">Играть снова</button>
     </div>
   </div>
 
   <script>
-    // ========== PWA ОПРЕДЕЛЕНИЕ ==========
+    // ========== PWA ==========
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
     let deferredPrompt;
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
+      e.preventDefault(); deferredPrompt = e;
       document.getElementById('installBtn').classList.remove('hidden');
     });
-
     window.installApp = async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        document.getElementById('installBtn').classList.add('hidden');
-      }
+      if (outcome === 'accepted') document.getElementById('installBtn').classList.add('hidden');
       deferredPrompt = null;
     };
-
     window.addEventListener('appinstalled', () => {
       document.getElementById('installBtn').classList.add('hidden');
       document.getElementById('openBtn').classList.remove('hidden');
     });
 
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
     if (isStandalone) {
-      // В приложении — сразу игра
       document.getElementById('welcomeScreen').classList.add('hidden');
       document.getElementById('gameContainer').style.display = 'block';
-      initGame();
+      startGame();
     } else {
-      // На сайте — кнопки
       document.getElementById('welcomeScreen').style.display = 'flex';
       document.getElementById('openBtn').classList.remove('hidden');
     }
@@ -235,160 +147,315 @@
       initGame();
     };
 
-    // ========== ИГРА ==========
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    let W, H;
-    let player, enemies, bullets;
-    let score = 0;
-    let gameRunning = false;
-    let gameTime = 120; // 2 минуты
-    let timerInterval;
-    
-    // Джойстик
-    let joystickActive = false;
-    let joystickX = 0, joystickY = 0;
-    let moveX = 0, moveY = 0;
-
-    // Персонаж
-    class Character {
-      constructor(x, y, color, hp, speed, isPlayer = false) {
-        this.x = x; this.y = y;
-        this.color = color;
-        this.hp = hp; this.maxHp = hp;
-        this.speed = speed;
-        this.radius = 20;
-        this.isPlayer = isPlayer;
-        this.shootCooldown = 0;
-        this.respawnTimer = 0;
-        this.alive = true;
-      }
-      
-      draw() {
-        if (!this.alive) return;
-        // Тень
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y + 3, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Тело
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Глаза
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(this.x - 6, this.y - 6, 5, 0, Math.PI * 2);
-        ctx.arc(this.x + 6, this.y - 6, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'black';
-        ctx.beginPath();
-        ctx.arc(this.x - 6, this.y - 6, 2.5, 0, Math.PI * 2);
-        ctx.arc(this.x + 6, this.y - 6, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // HP бар
-        if (this.hp < this.maxHp) {
-          const bw = this.radius * 2;
-          ctx.fillStyle = 'red';
-          ctx.fillRect(this.x - this.radius, this.y - this.radius - 12, bw, 5);
-          ctx.fillStyle = '#00ff00';
-          ctx.fillRect(this.x - this.radius, this.y - this.radius - 12, bw * (this.hp / this.maxHp), 5);
-        }
-        
-        // Игрок — оружие
-        if (this.isPlayer) {
-          const angle = Math.atan2(moveY, moveX) || -Math.PI/2;
-          ctx.strokeStyle = '#666';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(this.x, this.y);
-          ctx.lineTo(this.x + Math.cos(angle) * 30, this.y + Math.sin(angle) * 30);
-          ctx.stroke();
-        }
-      }
-      
-      move(dx, dy) {
-        if (!this.alive) return;
-        const newX = this.x + dx * this.speed;
-        const newY = this.y + dy * this.speed;
-        if (newX > this.radius && newX < W - this.radius) this.x = newX;
-        if (newY > this.radius && newY < H - this.radius) this.y = newY;
-      }
-      
-      shoot(target) {
-        if (!this.alive || this.shootCooldown > 0) return;
-        const angle = Math.atan2(target.y - this.y, target.x - this.x);
-        bullets.push({
-          x: this.x, y: this.y,
-          vx: Math.cos(angle) * 8,
-          vy: Math.sin(angle) * 8,
-          fromPlayer: this.isPlayer,
-          damage: this.isPlayer ? 15 : 10
-        });
-        this.shootCooldown = this.isPlayer ? 15 : 40;
-      }
-      
-      update() {
-        if (!this.alive) {
-          this.respawnTimer--;
-          if (this.respawnTimer <= 0) {
-            this.alive = true;
-            this.hp = this.maxHp;
-            this.x = Math.random() * (W - 100) + 50;
-            this.y = Math.random() * (H - 200) + 50;
-          }
-          return;
-        }
-        if (this.shootCooldown > 0) this.shootCooldown--;
-      }
-    }
-
-    function spawnEnemy() {
-      const x = Math.random() * (W - 100) + 50;
-      const y = Math.random() * (H - 200) + 50;
-      const colors = ['#ff4444', '#ff8800', '#ff00ff', '#00aaff'];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      enemies.push(new Character(x, y, color, 80, 1.8));
-    }
+    // ========== 3D ИГРА ==========
+    let scene, camera, renderer;
+    let player, enemies = [], bullets = [];
+    let moveAngle = null, attackAngle = null;
+    let score = 0, gameTime = 120, gameRunning = false, timerInterval;
+    let playerHP = 100, maxHP = 100;
+    const W = window.innerWidth, H = window.innerHeight;
 
     function initGame() {
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width = W;
-      canvas.height = H;
+      // Three.js сцена
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87CEEB);
+      scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
       
-      player = new Character(W/2, H/2, '#4d96ff', 120, 2.5, true);
+      // Камера сверху
+      camera = new THREE.PerspectiveCamera(60, W / H, 1, 1000);
+      camera.position.set(0, 45, 35);
+      camera.lookAt(0, 0, 0);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(W, H);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.getElementById('gameContainer').prepend(renderer.domElement);
+      
+      // Освещение
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(20, 30, 10);
+      light.castShadow = true;
+      light.shadow.camera.left = -50; light.shadow.camera.right = 50;
+      light.shadow.camera.top = 50; light.shadow.camera.bottom = -50;
+      light.shadow.mapSize.width = 1024; light.shadow.mapSize.height = 1024;
+      scene.add(light);
+      scene.add(new THREE.AmbientLight(0x404040));
+      
+      // Земля (зелёная трава)
+      const groundGeo = new THREE.PlaneGeometry(80, 80);
+      const groundMat = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      
+      // Препятствия (как в Brawl Stars)
+      const obstacles = [
+        { x: -15, z: -15 }, { x: 15, z: 15 }, { x: -15, z: 15 }, { x: 15, z: -15 },
+        { x: 0, z: -20 }, { x: 0, z: 20 }, { x: -20, z: 0 }, { x: 20, z: 0 }
+      ];
+      
+      obstacles.forEach(pos => {
+        const geo = new THREE.BoxGeometry(3, 2, 3);
+        const mat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        const box = new THREE.Mesh(geo, mat);
+        box.position.set(pos.x, 1, pos.z);
+        box.castShadow = true;
+        box.receiveShadow = true;
+        scene.add(box);
+        
+        // Кусты сверху
+        const bushGeo = new THREE.SphereGeometry(1.8, 8, 8);
+        const bushMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const bush = new THREE.Mesh(bushGeo, bushMat);
+        bush.position.set(pos.x, 2.5, pos.z);
+        bush.castShadow = true;
+        scene.add(bush);
+      });
+      
+      // Игрок (синий персонаж)
+      player = createCharacter(0x4488ff, 0, 0);
+      
+      // Враги
       enemies = [];
+      for (let i = 0; i < 4; i++) {
+        const ex = (Math.random() - 0.5) * 50;
+        const ez = (Math.random() - 0.5) * 50;
+        enemies.push({
+          mesh: createCharacter(0xff4444, ex, ez),
+          hp: 60, maxHp: 60,
+          alive: true, respawnTimer: 0,
+          shootCooldown: 0
+        });
+      }
+      
       bullets = [];
       score = 0;
       gameTime = 120;
       gameRunning = true;
+      playerHP = maxHP;
       
       document.getElementById('gameOver').style.display = 'none';
-      document.getElementById('healthFill').style.width = '100%';
+      document.getElementById('hpFill').style.width = '100%';
       document.getElementById('scoreDisplay').textContent = '🏆 0';
-      document.getElementById('timer').textContent = '2:00';
-      
-      for (let i = 0; i < 3; i++) spawnEnemy();
       
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         gameTime--;
-        const min = Math.floor(gameTime / 60);
-        const sec = gameTime % 60;
-        document.getElementById('timer').textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+        document.getElementById('timer').textContent = `${Math.floor(gameTime/60)}:${(gameTime%60).toString().padStart(2,'0')}`;
         if (gameTime <= 0) endGame();
       }, 1000);
       
-      gameLoop();
+      setupJoysticks();
+      animate();
+    }
+
+    function createCharacter(color, x, z) {
+      const group = new THREE.Group();
+      
+      // Тело
+      const bodyGeo = new THREE.CylinderGeometry(1, 1.2, 2, 8);
+      const bodyMat = new THREE.MeshLambertMaterial({ color });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 1;
+      body.castShadow = true;
+      group.add(body);
+      
+      // Голова
+      const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
+      const headMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 2.4;
+      head.castShadow = true;
+      group.add(head);
+      
+      // Глаза
+      const eyeGeo = new THREE.SphereGeometry(0.15, 6, 6);
+      const eyeMat = new THREE.MeshLambertMaterial({ color: 0x000000 });
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.2, 2.5, 0.6);
+      group.add(leftEye);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.2, 2.5, 0.6);
+      group.add(rightEye);
+      
+      group.position.set(x, 0, z);
+      scene.add(group);
+      return group;
+    }
+
+    // ========== ДЖОЙСТИКИ ==========
+    function setupJoysticks() {
+      setupJoystick('moveBase', 'moveThumb', (angle) => { moveAngle = angle; });
+      setupJoystick('attackBase', 'attackThumb', (angle) => { attackAngle = angle; });
+    }
+
+    function setupJoystick(baseId, thumbId, callback) {
+      const base = document.getElementById(baseId);
+      const thumb = document.getElementById(thumbId);
+      let active = false;
+      
+      base.addEventListener('touchstart', (e) => {
+        e.preventDefault(); active = true;
+        updateJoystick(e.touches[0], base, thumb, callback);
+      });
+      base.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (active) updateJoystick(e.touches[0], base, thumb, callback);
+      });
+      base.addEventListener('touchend', (e) => {
+        e.preventDefault(); active = false;
+        thumb.style.transform = 'translate(-50%, -50%)';
+        callback(null);
+      });
+    }
+
+    function updateJoystick(touch, base, thumb, callback) {
+      const rect = base.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = touch.clientX - cx;
+      const dy = touch.clientY - cy;
+      const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 50);
+      const angle = Math.atan2(dy, dx);
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+      thumb.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+      callback(dist > 10 ? angle : null);
+    }
+
+    // ========== АНИМАЦИЯ ==========
+    function animate() {
+      if (!gameRunning) return;
+      requestAnimationFrame(animate);
+      
+      // Движение игрока
+      if (moveAngle !== null) {
+        player.position.x += Math.cos(moveAngle) * 0.15;
+        player.position.z += Math.sin(moveAngle) * 0.15;
+        // Границы
+        player.position.x = Math.max(-35, Math.min(35, player.position.x));
+        player.position.z = Math.max(-35, Math.min(35, player.position.z));
+      }
+      
+      // Камера следует за игроком
+      camera.position.x = player.position.x;
+      camera.position.z = player.position.z + 35;
+      camera.lookAt(player.position.x, 0, player.position.z);
+      
+      // Атака
+      if (attackAngle !== null && player && gameRunning) {
+        const bx = player.position.x + Math.cos(attackAngle) * 2;
+        const bz = player.position.z + Math.sin(attackAngle) * 2;
+        
+        // Проверяем кулдаун
+        if (!player.userData?.shootCooldown || player.userData.shootCooldown <= 0) {
+          const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
+          const bulletMat = new THREE.MeshLambertMaterial({ color: 0xffd93d });
+          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+          bullet.position.set(bx, 1.5, bz);
+          bullet.userData = {
+            vx: Math.cos(attackAngle) * 0.6,
+            vz: Math.sin(attackAngle) * 0.6,
+            life: 60
+          };
+          scene.add(bullet);
+          bullets.push(bullet);
+          
+          if (!player.userData) player.userData = {};
+          player.userData.shootCooldown = 10;
+        }
+      }
+      
+      if (player.userData?.shootCooldown > 0) {
+        player.userData.shootCooldown--;
+      }
+      
+      // Движение врагов
+      enemies.forEach(enemy => {
+        if (!enemy.alive) {
+          enemy.respawnTimer--;
+          if (enemy.respawnTimer <= 0) {
+            enemy.alive = true;
+            enemy.hp = enemy.maxHp;
+            enemy.mesh.visible = true;
+            enemy.mesh.position.set((Math.random()-0.5)*60, 0, (Math.random()-0.5)*60);
+          }
+          return;
+        }
+        
+        const dx = player.position.x - enemy.mesh.position.x;
+        const dz = player.position.z - enemy.mesh.position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        
+        if (dist > 5) {
+          enemy.mesh.position.x += (dx / dist) * 0.06;
+          enemy.mesh.position.z += (dz / dist) * 0.06;
+        }
+        
+        enemy.mesh.lookAt(player.position.x, 0, player.position.z);
+        
+        // Враги стреляют
+        if (dist < 25 && enemy.shootCooldown <= 0) {
+          const angle = Math.atan2(dz, dx);
+          const bulletGeo = new THREE.SphereGeometry(0.25, 6, 6);
+          const bulletMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+          bullet.position.copy(enemy.mesh.position);
+          bullet.position.y = 1.5;
+          bullet.userData = { vx: Math.cos(angle)*0.4, vz: Math.sin(angle)*0.4, life: 80 };
+          scene.add(bullet);
+          bullets.push(bullet);
+          enemy.shootCooldown = 60;
+        }
+        if (enemy.shootCooldown > 0) enemy.shootCooldown--;
+      });
+      
+      // Пули
+      bullets = bullets.filter(b => {
+        b.position.x += b.userData.vx;
+        b.position.z += b.userData.vz;
+        b.userData.life--;
+        
+        if (b.userData.life <= 0) { scene.remove(b); return false; }
+        
+        // Попадание в игрока
+        if (b.material.color.getHex() === 0xff0000) {
+          const d = player.position.distanceTo(b.position);
+          if (d < 2) {
+            playerHP -= 10;
+            document.getElementById('hpFill').style.width = (playerHP/maxHP*100)+'%';
+            scene.remove(b);
+            if (playerHP <= 0) endGame();
+            return false;
+          }
+        }
+        
+        // Попадание во врагов
+        if (b.material.color.getHex() === 0xffd93d) {
+          for (let enemy of enemies) {
+            if (!enemy.alive) continue;
+            const d = enemy.mesh.position.distanceTo(b.position);
+            if (d < 2.5) {
+              enemy.hp -= 20;
+              scene.remove(b);
+              if (enemy.hp <= 0) {
+                enemy.alive = false;
+                enemy.mesh.visible = false;
+                enemy.respawnTimer = 120;
+                score += 10;
+                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
+              }
+              return false;
+            }
+          }
+        }
+        
+        return true;
+      });
+      
+      renderer.render(scene, camera);
     }
 
     function endGame() {
@@ -396,152 +463,17 @@
       clearInterval(timerInterval);
       document.getElementById('gameOver').style.display = 'flex';
       document.getElementById('gameOverScore').textContent = '🏆 ' + score;
-      document.getElementById('gameOverTitle').textContent = score >= 50 ? 'Победа!' : 'Поражение';
+      document.getElementById('gameOverTitle').textContent = score >= 30 ? 'Победа!' : 'Поражение';
     }
 
     window.restartGame = () => {
-      if (timerInterval) clearInterval(timerInterval);
-      enemies = [];
-      bullets = [];
+      clearInterval(timerInterval);
+      while(scene.children.length > 0) scene.remove(scene.children[0]);
+      enemies = []; bullets = [];
+      document.getElementById('gameOver').style.display = 'none';
       initGame();
     };
 
-    // ========== ДЖОЙСТИК ==========
-    const joystickArea = document.getElementById('joystickArea');
-    const joystickBase = document.getElementById('joystickBase');
-    const joystickThumb = document.getElementById('joystickThumb');
-    
-    joystickArea.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      joystickActive = true;
-      handleJoystick(e.touches[0]);
-    });
-    
-    joystickArea.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      if (joystickActive) handleJoystick(e.touches[0]);
-    });
-    
-    joystickArea.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      joystickActive = false;
-      moveX = 0; moveY = 0;
-      joystickThumb.style.transform = 'translate(-50%, -50%)';
-    });
-    
-    function handleJoystick(touch) {
-      const rect = joystickBase.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = touch.clientX - cx;
-      const dy = touch.clientY - cy;
-      const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 50);
-      const angle = Math.atan2(dy, dx);
-      moveX = Math.cos(angle) * (dist / 50);
-      moveY = Math.sin(angle) * (dist / 50);
-      joystickThumb.style.transform = `translate(calc(-50% + ${moveX * 50}px), calc(-50% + ${moveY * 50}px))`;
-    }
-
-    // ========== ИГРОВОЙ ЦИКЛ ==========
-    function gameLoop() {
-      if (!gameRunning) return;
-      
-      ctx.clearRect(0, 0, W, H);
-      
-      // Фон с сеткой
-      ctx.fillStyle = '#2d5016';
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < W; x += 60) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      }
-      for (let y = 0; y < H; y += 60) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      }
-      
-      // Границы
-      ctx.strokeStyle = '#ffd93d';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(2, 2, W - 4, H - 4);
-      
-      // Игрок
-      player.move(moveX, moveY);
-      player.update();
-      player.draw();
-      
-      // Враги
-      enemies.forEach(enemy => {
-        enemy.update();
-        enemy.draw();
-        
-        if (enemy.alive && player.alive) {
-          // Идти к игроку
-          const dx = player.x - enemy.x;
-          const dy = player.y - enemy.y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist > 0) {
-            enemy.move(dx / dist, dy / dist);
-          }
-          // Стрелять
-          if (dist < 300) {
-            enemy.shoot(player);
-          }
-        }
-      });
-      
-      // Пули
-      bullets = bullets.filter(b => {
-        b.x += b.vx;
-        b.y += b.vy;
-        
-        ctx.fillStyle = b.fromPlayer ? '#ffd93d' : '#ff4444';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 5, 0, Math.PI*2);
-        ctx.fill();
-        
-        // Выход за границы
-        if (b.x < 0 || b.x > W || b.y < 0 || b.y > H) return false;
-        
-        // Попадание
-        if (b.fromPlayer) {
-          for (let enemy of enemies) {
-            if (!enemy.alive) continue;
-            const d = Math.sqrt((b.x-enemy.x)**2 + (b.y-enemy.y)**2);
-            if (d < enemy.radius) {
-              enemy.hp -= b.damage;
-              if (enemy.hp <= 0) {
-                enemy.alive = false;
-                enemy.respawnTimer = 60;
-                score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 ' + score;
-              }
-              return false;
-            }
-          }
-        } else if (player.alive) {
-          const d = Math.sqrt((b.x-player.x)**2 + (b.y-player.y)**2);
-          if (d < player.radius) {
-            player.hp -= b.damage;
-            document.getElementById('healthFill').style.width = (player.hp / player.maxHp * 100) + '%';
-            if (player.hp <= 0) {
-              player.alive = false;
-              player.respawnTimer = 60;
-            }
-            return false;
-          }
-        }
-        return true;
-      });
-      
-      // Спаун врагов
-      const aliveEnemies = enemies.filter(e => e.alive).length;
-      if (aliveEnemies < 3 && enemies.length < 5) spawnEnemy();
-      
-      requestAnimationFrame(gameLoop);
-    }
-
-    // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
