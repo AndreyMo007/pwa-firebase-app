@@ -12,491 +12,385 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      background: #000; overflow: hidden; touch-action: none; 
-      user-select: none; -webkit-user-select: none; 
-      height: 100vh; width: 100vw; font-family: 'Arial', sans-serif;
-      position: fixed; top: 0; left: 0;
-    }
+    body { background: #000; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; height: 100vh; width: 100vw; font-family: 'Arial', sans-serif; position: fixed; }
     
-    .welcome-screen {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100vh; width: 100vw; text-align: center;
-      background: linear-gradient(135deg, #1a0033 0%, #0a0a2e 50%, #001a33 100%);
-      color: white; padding: 20px; position: fixed; top: 0; left: 0; z-index: 999;
-    }
-    .welcome-screen .logo { font-size: 80px; animation: bounce 1.5s infinite; }
+    .screen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+    .screen.active { display: flex; }
+    
+    /* ЭКРАН УСТАНОВКИ */
+    #installScreen { flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a0033, #0a0a2e); color: white; text-align: center; z-index: 200; }
+    #installScreen .logo { font-size: 80px; animation: bounce 1.5s infinite; }
     @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-25px)} }
-    .welcome-screen h1 { font-size: 2.5rem; background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 15px 0; }
-    .welcome-screen p { opacity: 0.8; margin-bottom: 20px; font-size: 1rem; }
-    .install-btn { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.1rem; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 10px 30px rgba(255,107,107,0.4); animation: pulse 2s infinite; margin-bottom: 10px; }
+    #installScreen h1 { font-size: 2.5rem; background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 15px 0; }
+    .install-btn { background: #ff6b6b; color: white; padding: 18px 50px; border-radius: 50px; font-size: 1.2rem; font-weight: 700; cursor: pointer; border: none; animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{box-shadow:0 8px 25px rgba(255,107,107,0.4)} 50%{box-shadow:0 8px 45px rgba(255,107,107,0.8)} }
-    .open-btn { background: transparent; color: #ffd93d; padding: 12px 25px; border-radius: 50px; font-size: 0.9rem; cursor: pointer; border: 2px solid #ffd93d; }
     
-    #gameContainer { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+    /* ЭКРАН НИКА */
+    #nickScreen { flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0a2e, #1a0033); color: white; z-index: 199; }
+    #nickScreen h2 { font-size: 2rem; margin-bottom: 20px; }
+    #nickScreen input { width: 280px; padding: 15px; border-radius: 15px; border: 2px solid #4d96ff; background: rgba(255,255,255,0.1); color: white; font-size: 18px; text-align: center; outline: none; }
+    #nickScreen button { margin-top: 15px; padding: 14px 40px; border-radius: 50px; background: #6bcb77; color: white; font-size: 1.1rem; font-weight: 700; border: none; cursor: pointer; }
+    
+    /* ЛОББИ */
+    #lobbyScreen { flex-direction: column; align-items: center; background: linear-gradient(180deg, #1a3a5c 0%, #0a1a2e 50%, #1a0033 100%); z-index: 100; }
+    .lobby-top { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 15px 20px; }
+    .nick-display { color: #ffd93d; font-size: 20px; font-weight: bold; }
+    .trophy-display { color: #fff; font-size: 16px; }
+    .lobby-center { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+    .character-display { width: 200px; height: 200px; border-radius: 50%; background: rgba(68,136,255,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid rgba(68,136,255,0.5); font-size: 80px; }
+    .character-display:active { transform: scale(0.95); }
+    .play-btn { position: absolute; bottom: 30px; right: 30px; padding: 18px 40px; background: linear-gradient(135deg, #ffd93d, #ff8800); color: #000; border-radius: 50px; font-size: 1.3rem; font-weight: 800; border: none; cursor: pointer; letter-spacing: 2px; }
+    .play-btn:active { transform: scale(0.95); }
+    
+    /* КОЛЛЕКЦИЯ */
+    #collectionScreen { flex-direction: column; background: linear-gradient(180deg, #0a0a2e, #1a0033); color: white; z-index: 150; overflow-y: auto; padding: 20px; }
+    .collection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .collection-header h2 { font-size: 1.5rem; }
+    .back-btn { padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px; cursor: pointer; font-size: 14px; }
+    .brawlers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .brawler-card { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 15px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+    .brawler-card.selected { border-color: #ffd93d; background: rgba(255,217,61,0.15); }
+    .brawler-card.locked { opacity: 0.4; }
+    .brawler-icon { font-size: 60px; margin-bottom: 10px; }
+    .brawler-name { font-weight: bold; font-size: 14px; }
+    
+    /* ИГРА */
+    #gameScreen { z-index: 50; }
     canvas { display: block; width: 100%; height: 100%; }
-    
-    .ui-top {
-      position: absolute; top: 10px; left: 15px; right: 15px;
-      display: flex; justify-content: space-between; align-items: center;
-      z-index: 10; pointer-events: none;
-    }
-    .hp-bar { width: 140px; height: 14px; background: rgba(0,0,0,0.6); border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,0.5); }
-    .hp-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #ff8800, #00ff00); transition: width 0.3s; }
-    .score-display { color: #ffd93d; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(255,217,61,0.5); }
+    .game-ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; }
+    .hp-container { display: flex; flex-direction: column; align-items: center; }
+    .hp-bar-bg { width: 160px; height: 10px; background: rgba(0,0,0,0.6); border-radius: 5px; overflow: hidden; }
+    .hp-bar-fill { height: 100%; background: #00ff00; transition: width 0.3s; }
+    .hp-text { color: white; font-size: 11px; font-weight: bold; margin-top: 2px; }
+    .ammo-container { display: flex; gap: 4px; margin-top: 4px; }
+    .ammo-cell { width: 22px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 3px; transition: 0.2s; }
+    .ammo-cell.filled { background: #ffd93d; box-shadow: 0 0 8px rgba(255,217,61,0.5); }
     .timer { color: white; font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 12px; }
+    .score { color: #ffd93d; font-size: 16px; font-weight: bold; }
     
-    /* ДЖОЙСТИКИ — ПОДНЯТЫ ВЫШЕ */
-    .joystick {
-      position: absolute; bottom: 120px; width: 120px; height: 120px; z-index: 20;
-    }
-    #moveJoystick { left: 30px; }
-    #attackJoystick { right: 30px; }
+    .joystick { position: absolute; bottom: 100px; width: 110px; height: 110px; z-index: 20; }
+    #moveJoystick { left: 25px; }
+    #attackJoystick { right: 25px; }
+    #moveJoystick .js-base { width: 100%; height: 100%; background: rgba(68,136,255,0.12); border-radius: 50%; border: 3px solid rgba(68,136,255,0.4); position: relative; }
+    #attackJoystick .js-base { width: 100%; height: 100%; background: rgba(255,68,68,0.12); border-radius: 50%; border: 3px solid rgba(255,68,68,0.4); position: relative; }
+    .js-thumb { width: 45px; height: 45px; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+    #moveJoystick .js-thumb { background: rgba(68,136,255,0.6); border: 2px solid #4488ff; box-shadow: 0 0 12px rgba(68,136,255,0.4); }
+    #attackJoystick .js-thumb { background: rgba(255,68,68,0.6); border: 2px solid #ff4444; box-shadow: 0 0 12px rgba(255,68,68,0.4); }
+    .js-label { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; text-transform: uppercase; }
+    #moveJoystick .js-label { color: rgba(68,136,255,0.7); }
+    #attackJoystick .js-label { color: rgba(255,68,68,0.7); }
     
-    /* СИНИЙ ДЖОЙСТИК ДЛЯ ДВИЖЕНИЯ */
-    #moveJoystick .joystick-base {
-      width: 100%; height: 100%; background: rgba(68, 136, 255, 0.15);
-      border-radius: 50%; border: 3px solid rgba(68, 136, 255, 0.5); position: relative;
-      box-shadow: 0 0 20px rgba(68, 136, 255, 0.2);
-    }
-    #moveJoystick .joystick-thumb {
-      width: 50px; height: 50px; background: rgba(68, 136, 255, 0.7);
-      border-radius: 50%; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); border: 2px solid #4488ff;
-      box-shadow: 0 0 15px rgba(68, 136, 255, 0.5); pointer-events: none;
-    }
-    
-    /* КРАСНЫЙ ДЖОЙСТИК ДЛЯ АТАКИ */
-    #attackJoystick .joystick-base {
-      width: 100%; height: 100%; background: rgba(255, 68, 68, 0.15);
-      border-radius: 50%; border: 3px solid rgba(255, 68, 68, 0.5); position: relative;
-      box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
-    }
-    #attackJoystick .joystick-thumb {
-      width: 50px; height: 50px; background: rgba(255, 68, 68, 0.7);
-      border-radius: 50%; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); border: 2px solid #ff4444;
-      box-shadow: 0 0 15px rgba(255, 68, 68, 0.5); pointer-events: none;
-    }
-    
-    .joystick-label {
-      position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
-      font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
-    }
-    #moveJoystick .joystick-label { color: rgba(68, 136, 255, 0.8); }
-    #attackJoystick .joystick-label { color: rgba(255, 68, 68, 0.8); }
-    
-    /* ИНДИКАТОР АКТИВНОСТИ */
-    .joystick.active .joystick-base {
-      border-color: rgba(255,255,255,0.8) !important;
-      box-shadow: 0 0 30px rgba(255,255,255,0.3) !important;
-    }
-    
-    .game-over {
-      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9); z-index: 100;
-      flex-direction: column; align-items: center; justify-content: center;
-      color: white; text-align: center;
-    }
-    .game-over h2 { font-size: 3rem; margin-bottom: 10px; }
-    .game-over .final-score { font-size: 2rem; color: #ffd93d; margin-bottom: 20px; }
-    .game-over button { background: linear-gradient(135deg, #6bcb77, #4d96ff); color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 700; }
+    .game-over-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center; color: white; }
+    .game-over-overlay h2 { font-size: 2.5rem; margin-bottom: 10px; }
+    .game-over-overlay button { margin-top: 15px; padding: 14px 35px; background: #6bcb77; color: white; border-radius: 50px; font-size: 1.1rem; font-weight: 700; border: none; cursor: pointer; }
     
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- ПРИВЕТСТВИЕ -->
-  <div id="welcomeScreen" class="welcome-screen">
+  <!-- ЭКРАН УСТАНОВКИ -->
+  <div id="installScreen" class="screen">
     <div class="logo">⚔️</div>
     <h1>3D Brawl Arena</h1>
-    <p>Синий — движение | Красный — атака</p>
-    <button id="installBtn" class="install-btn hidden" onclick="installApp()">📲 Установить игру</button>
-    <button id="openBtn" class="open-btn hidden" onclick="startGame()">🎮 Играть в браузере</button>
-    <p style="margin-top:12px;opacity:0.4;font-size:0.8rem;">Поверните телефон горизонтально</p>
+    <p style="opacity:0.7;margin-bottom:25px;">Установите приложение чтобы играть</p>
+    <button class="install-btn" id="installBtn" onclick="installApp()">📲 Установить игру</button>
+  </div>
+
+  <!-- ЭКРАН НИКА -->
+  <div id="nickScreen" class="screen">
+    <h2>Введите ваш ник</h2>
+    <input type="text" id="nickInput" placeholder="Ваш ник..." maxlength="16">
+    <button onclick="saveNick()">Продолжить</button>
+  </div>
+
+  <!-- ЛОББИ -->
+  <div id="lobbyScreen" class="screen">
+    <div class="lobby-top">
+      <span class="nick-display" id="lobbyNick">Игрок</span>
+      <span class="trophy-display" id="lobbyTrophies">🏆 0</span>
+    </div>
+    <div class="lobby-center">
+      <div class="character-display" id="selectedBrawler" onclick="openCollection()">🔫</div>
+    </div>
+    <button class="play-btn" onclick="startBattle()">⚔️ ИГРАТЬ</button>
+  </div>
+
+  <!-- КОЛЛЕКЦИЯ -->
+  <div id="collectionScreen" class="screen">
+    <div class="collection-header">
+      <span class="back-btn" onclick="closeCollection()">← Назад</span>
+      <h2>Коллекция бойцов</h2>
+      <span></span>
+    </div>
+    <div class="brawlers-grid" id="brawlersGrid"></div>
   </div>
 
   <!-- ИГРА -->
-  <div id="gameContainer">
-    <div class="ui-top">
-      <div class="hp-bar"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
+  <div id="gameScreen" class="screen">
+    <div class="game-ui">
+      <div>
+        <div class="hp-container">
+          <div class="hp-bar-bg"><div class="hp-bar-fill" id="hpFill" style="width:100%"></div></div>
+          <div class="hp-text" id="hpText">120/120</div>
+          <div class="ammo-container" id="ammoContainer">
+            <div class="ammo-cell filled"></div>
+            <div class="ammo-cell filled"></div>
+            <div class="ammo-cell filled"></div>
+          </div>
+        </div>
+      </div>
       <div class="timer" id="timer">2:00</div>
-      <div class="score-display" id="scoreDisplay">🏆 0</div>
+      <div class="score" id="scoreDisplay">🏆 0</div>
     </div>
     
-    <!-- СИНИЙ ДЖОЙСТИК ДВИЖЕНИЯ -->
     <div class="joystick" id="moveJoystick">
-      <div class="joystick-label">ДВИЖЕНИЕ</div>
-      <div class="joystick-base" id="moveBase">
-        <div class="joystick-thumb" id="moveThumb"></div>
-      </div>
+      <div class="js-label">ДВИЖЕНИЕ</div>
+      <div class="js-base" id="moveBase"><div class="js-thumb" id="moveThumb"></div></div>
     </div>
-    
-    <!-- КРАСНЫЙ ДЖОЙСТИК АТАКИ -->
     <div class="joystick" id="attackJoystick">
-      <div class="joystick-label">АТАКА</div>
-      <div class="joystick-base" id="attackBase">
-        <div class="joystick-thumb" id="attackThumb"></div>
-      </div>
+      <div class="js-label">АТАКА</div>
+      <div class="js-base" id="attackBase"><div class="js-thumb" id="attackThumb"></div></div>
     </div>
     
-    <div class="game-over" id="gameOver">
+    <div class="game-over-overlay" id="gameOver">
       <h2 id="gameOverTitle">Победа!</h2>
-      <div class="final-score" id="gameOverScore">🏆 0</div>
-      <button onclick="restartGame()">Играть снова</button>
+      <div id="gameOverScore">🏆 0</div>
+      <button onclick="backToLobby()">В лобби</button>
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // ========== PWA ==========
+    // ========== ДАННЫЕ ==========
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    let playerNick = localStorage.getItem('brawlNick') || '';
+    let selectedBrawlerId = localStorage.getItem('selectedBrawler') || 'soldier';
+    let trophies = parseInt(localStorage.getItem('trophies') || '0');
+    
+    const brawlers = [
+      { id: 'soldier', name: 'Солдат', icon: '🔫', color: 0x4488ff, hp: 120, speed: 0.18 },
+      { id: 'sniper', name: 'Снайпер', icon: '🎯', color: 0x00aa44, hp: 90, speed: 0.14 },
+      { id: 'heavy', name: 'Танк', icon: '🛡️', color: 0xff8800, hp: 200, speed: 0.12 },
+      { id: 'assassin', name: 'Ассасин', icon: '🗡️', color: 0xff00ff, hp: 80, speed: 0.24 },
+      { id: 'medic', name: 'Медик', icon: '💊', color: 0xffffff, hp: 100, speed: 0.16 },
+      { id: 'pyro', name: 'Пиромант', icon: '🔥', color: 0xff4400, hp: 100, speed: 0.17 }
+    ];
+
+    // ========== PWA ==========
     let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').style.display = 'block'; });
+    window.installApp = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const r = await deferredPrompt.userChoice; if (r.outcome === 'accepted') document.getElementById('installBtn').style.display = 'none'; deferredPrompt = null; };
+    window.addEventListener('appinstalled', () => { document.getElementById('installScreen').classList.remove('active'); showScreen('nickScreen'); });
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e;
-      document.getElementById('installBtn').classList.remove('hidden');
-    });
-    
-    window.installApp = async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') document.getElementById('installBtn').classList.add('hidden');
-      deferredPrompt = null;
-    };
-    
-    window.addEventListener('appinstalled', () => {
-      document.getElementById('installBtn').classList.add('hidden');
-      document.getElementById('openBtn').classList.remove('hidden');
-    });
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); const el = document.getElementById(id); if (el) el.classList.add('active'); }
 
-    function bootGame() {
-      document.getElementById('welcomeScreen').classList.add('hidden');
-      document.getElementById('gameContainer').style.display = 'block';
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {});
-      }
-      initGame();
+    // ========== НИК ==========
+    window.saveNick = () => { const n = document.getElementById('nickInput').value.trim(); if (!n) return; playerNick = n; localStorage.setItem('brawlNick', n); showScreen('lobbyScreen'); updateLobby(); };
+    
+    function updateLobby() {
+      document.getElementById('lobbyNick').textContent = playerNick;
+      document.getElementById('lobbyTrophies').textContent = '🏆 ' + trophies;
+      const b = brawlers.find(b => b.id === selectedBrawlerId);
+      document.getElementById('selectedBrawler').textContent = b ? b.icon : '🔫';
     }
 
-    if (isStandalone) {
-      bootGame();
-    } else {
-      document.getElementById('welcomeScreen').style.display = 'flex';
-      document.getElementById('openBtn').classList.remove('hidden');
+    // ========== КОЛЛЕКЦИЯ ==========
+    window.openCollection = () => { renderCollection(); showScreen('collectionScreen'); };
+    window.closeCollection = () => { showScreen('lobbyScreen'); updateLobby(); };
+    
+    function renderCollection() {
+      const grid = document.getElementById('brawlersGrid');
+      grid.innerHTML = brawlers.map(b => `
+        <div class="brawler-card ${b.id === selectedBrawlerId ? 'selected' : ''}" onclick="selectBrawler('${b.id}')">
+          <div class="brawler-icon">${b.icon}</div>
+          <div class="brawler-name">${b.name}</div>
+          <div style="font-size:11px;opacity:0.6;">❤️ ${b.hp}</div>
+        </div>
+      `).join('');
     }
+    
+    window.selectBrawler = (id) => { selectedBrawlerId = id; localStorage.setItem('selectedBrawler', id); renderCollection(); };
 
-    window.startGame = bootGame;
-
-    // ========== 3D ИГРА ==========
-    let scene, camera, renderer;
-    let player, enemies = [], bullets = [];
+    // ========== ИГРА ==========
+    let scene, camera, renderer, player, enemies = [], bullets = [];
     let moveAngle = null, attackAngle = null;
-    let score = 0, gameTime = 120, gameRunning = false, timerInterval;
-    let playerHP = 120, maxHP = 120;
-    let W, H;
+    let score = 0, gameTime = 120, gameRunning = false, timerInt;
+    let playerHP, maxHP, ammo = 3, maxAmmo = 3, ammoTimer = 0;
+    let lastDamageTime = 0, lastShotTime = 0, regenTimer = 0;
+    let W, H, brawlerData;
 
-    function initGame() {
-      W = window.innerWidth; H = window.innerHeight;
-      if (renderer) { renderer.dispose(); document.querySelectorAll('canvas').forEach(c => c.remove()); }
-      enemies = []; bullets = []; score = 0; gameTime = 120; gameRunning = true; playerHP = maxHP;
+    window.startBattle = () => {
+      brawlerData = brawlers.find(b => b.id === selectedBrawlerId);
+      playerHP = brawlerData.hp; maxHP = brawlerData.hp; ammo = 3;
+      score = 0; gameTime = 120; gameRunning = true;
+      lastDamageTime = 0; lastShotTime = 0; regenTimer = 0; ammoTimer = 0;
       
-      scene = new THREE.Scene();
-      const bgCanvas = document.createElement('canvas');
-      bgCanvas.width = 512; bgCanvas.height = 512;
-      const bgCtx = bgCanvas.getContext('2d');
-      const gradient = bgCtx.createLinearGradient(0, 0, 0, 512);
-      gradient.addColorStop(0, '#87CEEB'); gradient.addColorStop(0.4, '#98FB98');
-      gradient.addColorStop(0.6, '#228B22'); gradient.addColorStop(1, '#1a5c1a');
-      bgCtx.fillStyle = gradient; bgCtx.fillRect(0, 0, 512, 512);
-      scene.background = new THREE.CanvasTexture(bgCanvas);
-      scene.fog = new THREE.Fog(0x87CEEB, 40, 100);
-      
-      camera = new THREE.PerspectiveCamera(55, W/H, 1, 500);
-      camera.position.set(0, 50, 40); camera.lookAt(0, 0, 0);
-      
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(W, H);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      document.getElementById('gameContainer').appendChild(renderer.domElement);
-      
-      const sun = new THREE.DirectionalLight(0xfff5e6, 1.2);
-      sun.position.set(30, 40, 20); sun.castShadow = true;
-      sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
-      sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
-      sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
-      scene.add(sun);
-      scene.add(new THREE.AmbientLight(0x6688aa, 0.6));
-      
-      const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(100, 100),
-        new THREE.MeshLambertMaterial({ color: 0x4CAF50 })
-      );
-      ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
-      scene.add(ground);
-      
-      const obs = [
-        {x:-18,z:-18},{x:18,z:18},{x:-18,z:18},{x:18,z:-18},
-        {x:0,z:-25},{x:0,z:25},{x:-25,z:0},{x:25,z:0}
-      ];
-      obs.forEach(pos => {
-        const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(2.2, 0),
-          new THREE.MeshLambertMaterial({ color: 0x888888 })
-        );
-        rock.position.set(pos.x, 1.5, pos.z); rock.castShadow = true; rock.receiveShadow = true;
-        scene.add(rock);
-        const crystal = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.6),
-          new THREE.MeshLambertMaterial({ color: [0xff6b6b,0x4d96ff,0xffd93d,0x6bcb77][Math.floor(Math.random()*4)], emissive: 0xffffff, emissiveIntensity: 0.2 })
-        );
-        crystal.position.set(pos.x, 3.5, pos.z); scene.add(crystal);
-      });
-      
-      player = createCharacter(0x4488ff);
-      for (let i = 0; i < 5; i++) spawnEnemy();
-      
+      showScreen('gameScreen');
       document.getElementById('gameOver').style.display = 'none';
-      document.getElementById('hpFill').style.width = '100%';
+      updateHPUI(); updateAmmoUI();
       document.getElementById('scoreDisplay').textContent = '🏆 0';
       
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
+      if (timerInt) clearInterval(timerInt);
+      timerInt = setInterval(() => {
         gameTime--;
-        document.getElementById('timer').textContent = `${Math.floor(gameTime/60)}:${(gameTime%60).toString().padStart(2,'0')}`;
+        document.getElementById('timer').textContent = Math.floor(gameTime/60)+':'+(gameTime%60).toString().padStart(2,'0');
         if (gameTime <= 0) endGame(true);
-      }, 1000);
+        // Реген аммо
+        ammoTimer++;
+        if (ammoTimer >= 120) { ammoTimer = 0; if (ammo < maxAmmo) { ammo++; updateAmmoUI(); } }
+        // Реген HP
+        if (gameRunning && playerHP < maxHP && Date.now() - lastDamageTime > 2000 && Date.now() - lastShotTime > 2000) {
+          regenTimer++;
+          if (regenTimer >= 60) { regenTimer = 0; playerHP = Math.min(maxHP, playerHP + 1); updateHPUI(); }
+        }
+      }, 16);
       
-      setupJoysticks();
-      animate();
+      init3D();
+    };
+
+    function updateHPUI() { document.getElementById('hpFill').style.width = (playerHP/maxHP*100)+'%'; document.getElementById('hpText').textContent = playerHP+'/'+maxHP; }
+    function updateAmmoUI() {
+      const cells = document.querySelectorAll('.ammo-cell');
+      cells.forEach((c, i) => c.classList.toggle('filled', i < ammo));
     }
 
-    function createCharacter(color) {
+    function init3D() {
+      W = window.innerWidth; H = window.innerHeight;
+      if (renderer) { renderer.dispose(); document.querySelectorAll('#gameScreen canvas').forEach(c => c.remove()); }
+      enemies = []; bullets = [];
+      
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x87CEEB);
+      scene.fog = new THREE.Fog(0x87CEEB, 40, 100);
+      camera = new THREE.PerspectiveCamera(55, W/H, 1, 500);
+      camera.position.set(0, 50, 40); camera.lookAt(0,0,0);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(W, H); renderer.shadowMap.enabled = true;
+      document.getElementById('gameScreen').appendChild(renderer.domElement);
+      
+      scene.add(new THREE.AmbientLight(0x6688aa, 0.7));
+      const sun = new THREE.DirectionalLight(0xffffff, 1);
+      sun.position.set(30, 40, 20); sun.castShadow = true;
+      scene.add(sun);
+      
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshLambertMaterial({color:0x4CAF50}));
+      ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+      
+      [{x:-18,z:-18},{x:18,z:18},{x:-18,z:18},{x:18,z:-18},{x:0,z:-25},{x:0,z:25},{x:-25,z:0},{x:25,z:0}].forEach(pos => {
+        const r = new THREE.Mesh(new THREE.DodecahedronGeometry(2,0), new THREE.MeshLambertMaterial({color:0x888888}));
+        r.position.set(pos.x,1.5,pos.z); r.castShadow=true; scene.add(r);
+      });
+      
+      player = createChar(brawlerData.color);
+      for(let i=0;i<4;i++) spawnEnemy();
+      
+      setupJoysticks();
+      animate3D();
+    }
+
+    function createChar(color) {
       const g = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.3, 2.2, 12), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
-      body.position.y = 1.5; body.castShadow = true; g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshLambertMaterial({ color: 0xffdbac }));
-      head.position.y = 3.2; head.castShadow = true; g.add(head);
-      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.3 }));
-      helmet.position.y = 3.2; g.add(helmet);
-      const eyeMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
-      const lEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
-      lEye.position.set(-0.25, 3.3, 0.7); g.add(lEye);
-      const rEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
-      rEye.position.set(0.25, 3.3, 0.7); g.add(rEye);
-      const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8), new THREE.MeshLambertMaterial({ color: 0x333333 }));
-      gun.position.set(0, 1.8, 1.2); gun.rotation.x = Math.PI/2; g.add(gun);
-      scene.add(g);
-      return g;
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(1,1.3,2.2,12), new THREE.MeshLambertMaterial({color,emissive:color,emissiveIntensity:0.2}))).position.y=1.5;
+      g.children[0].castShadow=true;
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.8,8,8), new THREE.MeshLambertMaterial({color:0xffdbac}))).position.y=3.2;
+      g.children[1].castShadow=true;
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1.5,8), new THREE.MeshLambertMaterial({color:0x333333}))).position.set(0,1.8,1.2);
+      g.children[2].rotation.x=Math.PI/2;
+      scene.add(g); return g;
     }
 
     function spawnEnemy() {
-      const colors = [0xff4444, 0xff8800, 0xff00ff, 0x00aaff];
-      const color = colors[Math.floor(Math.random()*colors.length)];
-      const enemy = createCharacter(color);
-      enemy.position.set((Math.random()-0.5)*60, 0, (Math.random()-0.5)*60);
-      enemies.push({ mesh: enemy, hp: 80, maxHp: 80, alive: true, respawnTimer: 0, shootCooldown: 0, speed: 0.04 + Math.random()*0.03 });
+      const clrs = [0xff4444,0xff8800,0xff00ff,0x00aaff];
+      const e = createChar(clrs[Math.floor(Math.random()*4)]);
+      e.position.set((Math.random()-0.5)*60,0,(Math.random()-0.5)*60);
+      enemies.push({mesh:e,hp:70,maxHp:70,alive:true,respawn:0,cd:0,speed:0.04+Math.random()*0.03,lastDmg:0,regen:0});
     }
 
-    // ========== ДЖОЙСТИКИ (ОДНОВРЕМЕННАЯ РАБОТА) ==========
     function setupJoysticks() {
-      // Синий — движение
-      createJoystick('moveJoystick', 'moveBase', 'moveThumb', (a) => moveAngle = a);
-      // Красный — атака
-      createJoystick('attackJoystick', 'attackBase', 'attackThumb', (a) => attackAngle = a);
+      createJS('moveJoystick','moveBase','moveThumb',a=>moveAngle=a);
+      createJS('attackJoystick','attackBase','attackThumb',a=>attackAngle=a);
     }
 
-    function createJoystick(containerId, baseId, thumbId, callback) {
-      const container = document.getElementById(containerId);
-      const base = document.getElementById(baseId);
-      const thumb = document.getElementById(thumbId);
-      let activeTouchId = null;
-      
-      container.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        if (activeTouchId === null) {
-          const touch = e.changedTouches[0];
-          activeTouchId = touch.identifier;
-          container.classList.add('active');
-          updateJoystick(touch, base, thumb, callback);
-        }
-      }, { passive: false });
-      
-      container.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        for (let touch of e.changedTouches) {
-          if (touch.identifier === activeTouchId) {
-            updateJoystick(touch, base, thumb, callback);
-          }
-        }
-      }, { passive: false });
-      
-      container.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        for (let touch of e.changedTouches) {
-          if (touch.identifier === activeTouchId) {
-            activeTouchId = null;
-            container.classList.remove('active');
-            thumb.style.transform = 'translate(-50%, -50%)';
-            callback(null);
-          }
-        }
-      });
-      
-      container.addEventListener('touchcancel', (e) => {
-        activeTouchId = null;
-        container.classList.remove('active');
-        thumb.style.transform = 'translate(-50%, -50%)';
-        callback(null);
-      });
+    function createJS(cid,bid,tid,cb) {
+      const c=document.getElementById(cid),b=document.getElementById(bid),t=document.getElementById(tid);
+      let tid_=null;
+      c.addEventListener('touchstart',e=>{e.preventDefault();if(tid_===null){tid_=e.changedTouches[0].identifier;c.classList.add('active');upd(e.changedTouches[0]);}},{passive:false});
+      c.addEventListener('touchmove',e=>{e.preventDefault();for(let tc of e.changedTouches)if(tc.identifier===tid_)upd(tc);},{passive:false});
+      c.addEventListener('touchend',e=>{e.preventDefault();for(let tc of e.changedTouches)if(tc.identifier===tid_){tid_=null;c.classList.remove('active');t.style.transform='translate(-50%,-50%)';cb(null);}});
+      function upd(tc){const r=b.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=tc.clientX-cx,dy=tc.clientY-cy,dist=Math.min(Math.sqrt(dx*dx+dy*dy),45),ang=Math.atan2(dy,dx);t.style.transform=`translate(calc(-50% + ${Math.cos(ang)*dist}px), calc(-50% + ${Math.sin(ang)*dist}px))`;cb(dist>8?ang:null);}
     }
 
-    function updateJoystick(touch, base, thumb, callback) {
-      const rect = base.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top + rect.height/2;
-      const dx = touch.clientX - cx;
-      const dy = touch.clientY - cy;
-      const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 45);
-      const angle = Math.atan2(dy, dx);
-      thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
-      callback(dist > 8 ? angle : null);
-    }
-
-    // ========== АНИМАЦИЯ ==========
-    let lastShot = 0;
-    
-    function animate() {
-      if (!gameRunning) return;
-      requestAnimationFrame(animate);
+    function animate3D() {
+      if(!gameRunning)return;
+      requestAnimationFrame(animate3D);
       
-      if (moveAngle !== null && player) {
-        player.position.x += Math.cos(moveAngle) * 0.18;
-        player.position.z += Math.sin(moveAngle) * 0.18;
-        player.position.x = Math.max(-42, Math.min(42, player.position.x));
-        player.position.z = Math.max(-42, Math.min(42, player.position.z));
-        player.rotation.y = -moveAngle + Math.PI/2;
+      if(moveAngle!==null&&player){
+        player.position.x+=Math.cos(moveAngle)*brawlerData.speed;
+        player.position.z+=Math.sin(moveAngle)*brawlerData.speed;
+        player.position.x=Math.max(-42,Math.min(42,player.position.x));
+        player.position.z=Math.max(-42,Math.min(42,player.position.z));
+        player.rotation.y=-moveAngle+Math.PI/2;
+      }
+      camera.position.x+=(player.position.x-camera.position.x)*0.1;
+      camera.position.z=player.position.z+38;
+      camera.lookAt(player.position.x,0,player.position.z);
+      
+      const now=Date.now();
+      if(attackAngle!==null&&player&&ammo>0&&now-lastShotTime>300){
+        lastShotTime=now; ammo--; updateAmmoUI(); ammoTimer=0;
+        const bx=player.position.x+Math.cos(attackAngle)*2,bz=player.position.z+Math.sin(attackAngle)*2;
+        const bl=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,8),new THREE.MeshLambertMaterial({color:0xffd93d,emissive:0xffd93d,emissiveIntensity:0.8}));
+        bl.position.set(bx,2,bz);bl.userData={vx:Math.cos(attackAngle)*0.8,vz:Math.sin(attackAngle)*0.8,life:100,fromPlayer:true};
+        scene.add(bl);bullets.push(bl);
       }
       
-      camera.position.x += (player.position.x - camera.position.x) * 0.1;
-      camera.position.z = player.position.z + 38;
-      camera.lookAt(player.position.x, 0, player.position.z);
-      
-      const now = Date.now();
-      if (attackAngle !== null && player && now - lastShot > 120) {
-        lastShot = now;
-        const bx = player.position.x + Math.cos(attackAngle) * 2;
-        const bz = player.position.z + Math.sin(attackAngle) * 2;
-        const bullet = new THREE.Mesh(
-          new THREE.SphereGeometry(0.35, 8, 8),
-          new THREE.MeshLambertMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.8 })
-        );
-        bullet.position.set(bx, 2, bz);
-        bullet.userData = { vx: Math.cos(attackAngle)*0.8, vz: Math.sin(attackAngle)*0.8, life: 100, fromPlayer: true };
-        scene.add(bullet); bullets.push(bullet);
-      }
-      
-      enemies.forEach(enemy => {
-        if (!enemy.alive) {
-          enemy.respawnTimer--;
-          if (enemy.respawnTimer <= 0) {
-            enemy.alive = true; enemy.hp = enemy.maxHp;
-            enemy.mesh.visible = true;
-            enemy.mesh.position.set((Math.random()-0.5)*70, 0, (Math.random()-0.5)*70);
-          }
-          return;
-        }
-        const dx = player.position.x - enemy.mesh.position.x;
-        const dz = player.position.z - enemy.mesh.position.z;
-        const dist = Math.sqrt(dx*dx + dz*dz);
-        if (dist > 6) { enemy.mesh.position.x += (dx/dist)*enemy.speed; enemy.mesh.position.z += (dz/dist)*enemy.speed; }
-        enemy.mesh.lookAt(player.position.x, 0, player.position.z);
-        if (dist < 30 && enemy.shootCooldown <= 0) {
-          const angle = Math.atan2(dz, dx);
-          const bullet = new THREE.Mesh(
-            new THREE.SphereGeometry(0.25, 6, 6),
-            new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 })
-          );
-          bullet.position.copy(enemy.mesh.position); bullet.position.y = 2;
-          bullet.userData = { vx: Math.cos(angle)*0.5, vz: Math.sin(angle)*0.5, life: 80, fromPlayer: false };
-          scene.add(bullet); bullets.push(bullet);
-          enemy.shootCooldown = 50 + Math.random()*30;
-        }
-        if (enemy.shootCooldown > 0) enemy.shootCooldown--;
+      enemies.forEach(en=>{
+        if(!en.alive){en.respawn--;if(en.respawn<=0){en.alive=true;en.hp=en.maxHp;en.mesh.visible=true;en.mesh.position.set((Math.random()-0.5)*70,0,(Math.random()-0.5)*70);}return;}
+        if(en.hp<en.maxHp&&Date.now()-en.lastDmg>2000){en.regen++;if(en.regen>=60){en.regen=0;en.hp=Math.min(en.maxHp,en.hp+1);}}
+        const dx=player.position.x-en.mesh.position.x,dz=player.position.z-en.mesh.position.z,dist=Math.sqrt(dx*dx+dz*dz);
+        if(dist>6){en.mesh.position.x+=dx/dist*en.speed;en.mesh.position.z+=dz/dist*en.speed;}
+        en.mesh.lookAt(player.position.x,0,player.position.z);
+        if(dist<30&&en.cd<=0){const ang=Math.atan2(dz,dx);const bl=new THREE.Mesh(new THREE.SphereGeometry(0.25,6,6),new THREE.MeshLambertMaterial({color:0xff0000,emissive:0xff0000,emissiveIntensity:0.6}));bl.position.copy(en.mesh.position);bl.position.y=2;bl.userData={vx:Math.cos(ang)*0.5,vz:Math.sin(ang)*0.5,life:80,fromPlayer:false};scene.add(bl);bullets.push(bl);en.cd=50+Math.random()*30;}
+        if(en.cd>0)en.cd--;
       });
       
-      for (let i = bullets.length-1; i >= 0; i--) {
-        const b = bullets[i];
-        b.position.x += b.userData.vx; b.position.z += b.userData.vz;
-        b.userData.life--;
-        if (b.userData.life <= 0 || Math.abs(b.position.x) > 50 || Math.abs(b.position.z) > 50) { scene.remove(b); bullets.splice(i,1); continue; }
-        
-        if (!b.userData.fromPlayer && playerHP > 0) {
-          const d = player.position.distanceTo(b.position);
-          if (d < 2.5) {
-            playerHP -= 8;
-            document.getElementById('hpFill').style.width = Math.max(0, playerHP/maxHP*100)+'%';
-            scene.remove(b); bullets.splice(i,1);
-            if (playerHP <= 0) endGame(false); continue;
-          }
-        }
-        
-        if (b.userData.fromPlayer) {
-          for (let enemy of enemies) {
-            if (!enemy.alive) continue;
-            const d = enemy.mesh.position.distanceTo(b.position);
-            if (d < 3) {
-              enemy.hp -= 25; scene.remove(b); bullets.splice(i,1);
-              if (enemy.hp <= 0) {
-                enemy.alive = false; enemy.mesh.visible = false; enemy.respawnTimer = 90;
-                score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
-                if (enemies.filter(e=>e.alive).length < 3) spawnEnemy();
-              }
-              break;
-            }
-          }
-        }
+      for(let i=bullets.length-1;i>=0;i--){
+        const b=bullets[i];b.position.x+=b.userData.vx;b.position.z+=b.userData.vz;b.userData.life--;
+        if(b.userData.life<=0||Math.abs(b.position.x)>50||Math.abs(b.position.z)>50){scene.remove(b);bullets.splice(i,1);continue;}
+        if(!b.userData.fromPlayer&&playerHP>0){const d=player.position.distanceTo(b.position);if(d<2.5){playerHP-=8;lastDamageTime=Date.now();regenTimer=0;updateHPUI();scene.remove(b);bullets.splice(i,1);if(playerHP<=0)endGame(false);continue;}}
+        if(b.userData.fromPlayer){for(let en of enemies){if(!en.alive)continue;const d=en.mesh.position.distanceTo(b.position);if(d<3){en.hp-=25;en.lastDmg=Date.now();en.regen=0;scene.remove(b);bullets.splice(i,1);if(en.hp<=0){en.alive=false;en.mesh.visible=false;en.respawn=90;score+=10;document.getElementById('scoreDisplay').textContent='🏆 '+score;if(enemies.filter(e=>e.alive).length<3)spawnEnemy();}break;}}}
       }
-      
-      scene.children.forEach(child => {
-        if (child.geometry?.type === 'OctahedronGeometry') child.rotation.y += 0.02;
-      });
-      
-      renderer.render(scene, camera);
+      renderer.render(scene,camera);
     }
 
-    function endGame(won) {
-      gameRunning = false; clearInterval(timerInterval);
-      document.getElementById('gameOver').style.display = 'flex';
-      document.getElementById('gameOverScore').textContent = '🏆 '+score;
-      document.getElementById('gameOverTitle').textContent = won ? 'Победа!' : 'Поражение';
+    function endGame(won){
+      gameRunning=false;clearInterval(timerInt);
+      document.getElementById('gameOver').style.display='flex';
+      document.getElementById('gameOverScore').textContent='🏆 '+score;
+      document.getElementById('gameOverTitle').textContent=won?'Победа!':'Поражение';
+      trophies+=won?score:Math.floor(score/2);
+      localStorage.setItem('trophies',trophies);
     }
 
-    window.restartGame = () => {
-      clearInterval(timerInterval);
-      while(scene.children.length > 0) scene.remove(scene.children[0]);
-      enemies = []; bullets = [];
-      document.getElementById('gameOver').style.display = 'none';
-      initGame();
+    window.backToLobby=()=>{
+      clearInterval(timerInt);
+      if(scene){while(scene.children.length>0)scene.remove(scene.children[0]);}
+      enemies=[];bullets=[];
+      document.getElementById('gameOver').style.display='none';
+      showScreen('lobbyScreen');updateLobby();
     };
 
-    window.addEventListener('resize', () => {
-      if (renderer && gameRunning) {
-        W = window.innerWidth; H = window.innerHeight;
-        renderer.setSize(W, H); camera.aspect = W/H; camera.updateProjectionMatrix();
-      }
-    });
+    window.addEventListener('resize',()=>{if(renderer&&gameRunning){W=window.innerWidth;H=window.innerHeight;renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();}});
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    // ========== ЗАПУСК ==========
+    if(isStandalone){
+      if(!playerNick){showScreen('nickScreen');}else{showScreen('lobbyScreen');updateLobby();}
+    }else{
+      showScreen('installScreen');
     }
+    
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
   </script>
 </body>
 </html>
