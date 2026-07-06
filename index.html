@@ -89,9 +89,29 @@
       display: none;
     }
     
+    .install-btn.show {
+      display: block;
+    }
+    
     @keyframes pulse { 
       0%,100%{box-shadow:0 10px 30px rgba(255,107,107,0.4)} 
       50%{box-shadow:0 10px 50px rgba(255,107,107,0.8)} 
+    }
+    
+    .play-browser-btn {
+      background: transparent;
+      color: #ffd93d;
+      padding: 14px 30px;
+      border-radius: 50px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 2px solid #ffd93d;
+      margin-top: 10px;
+      display: none;
+    }
+    
+    .play-browser-btn.show {
+      display: block;
     }
     
     #gameContainer { 
@@ -471,8 +491,9 @@
   <div id="welcomeScreen" class="welcome-screen">
     <div class="logo">⚔️</div>
     <h1>3D Brawl Arena</h1>
-    <p>Установите игру для полного опыта</p>
+    <p id="welcomeMessage">Загрузка...</p>
     <button id="installBtn" class="install-btn">📲 Установить игру</button>
+    <button id="playBrowserBtn" class="play-browser-btn">🎮 Играть в браузере</button>
   </div>
 
   <!-- ЭКРАН ВВОДА НИКА -->
@@ -585,7 +606,7 @@
   </div>
 
   <script>
-    // ========== СИСТЕМА ПЕРСОНАЖЕЙ С КАСТОМНЫМ КОДОМ ==========
+    // ========== СИСТЕМА ПЕРСОНАЖЕЙ ==========
     let characters = [
       {
         id: 'default',
@@ -637,16 +658,8 @@
             bullets.push(bullet);
           }
         `,
-        abilityCode: `
-          function ability(player, enemies, scene) {
-            // Нет особой способности
-          }
-        `,
-        passiveCode: `
-          function passive(player) {
-            // Нет пассивной способности
-          }
-        `,
+        abilityCode: '',
+        passiveCode: '',
         isDefault: true
       }
     ];
@@ -654,7 +667,6 @@
     let selectedCharacter = characters[0];
     let playerNickname = '';
 
-    // Загрузка сохраненных персонажей
     function loadCharacters() {
       const saved = localStorage.getItem('brawlCharactersCustom');
       if (saved) {
@@ -701,7 +713,6 @@
         return;
       }
 
-      // Проверяем валидность кода
       try {
         if (modelCode) new Function('THREE', 'return ' + modelCode)(THREE);
         new Function('player', 'enemies', 'bullets', 'scene', 'angle', 'damage', attackCode);
@@ -789,32 +800,62 @@
       document.getElementById('lobbyProfile').textContent = nickname[0].toUpperCase();
     }
 
-    // ========== PWA ==========
+    // ========== PWA ИСПРАВЛЕННАЯ УСТАНОВКА ==========
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
     let deferredPrompt;
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); 
-      deferredPrompt = e;
-      document.getElementById('installBtn').style.display = 'block';
-    });
-
-    window.installApp = async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        document.getElementById('installBtn').style.display = 'none';
-      }
-      deferredPrompt = null;
+    // Проверяем поддержку PWA
+    const isPWASupported = () => {
+      return 'serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window;
     };
 
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('beforeinstallprompt событие получено');
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Показываем кнопку установки
+      const installBtn = document.getElementById('installBtn');
+      installBtn.classList.add('show');
+      installBtn.onclick = installApp;
+      
+      document.getElementById('welcomeMessage').textContent = 'Нажмите "Установить" для лучшего опыта';
+    });
+
+    // Функция установки
+    window.installApp = async () => {
+      if (!deferredPrompt) {
+        alert('Установка недоступна. Попробуйте открыть в Chrome или Edge.');
+        return;
+      }
+      
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('Результат установки:', outcome);
+        
+        if (outcome === 'accepted') {
+          document.getElementById('installBtn').classList.remove('show');
+          document.getElementById('welcomeMessage').textContent = 'Приложение устанавливается...';
+        }
+        
+        deferredPrompt = null;
+      } catch(e) {
+        console.error('Ошибка установки:', e);
+        alert('Не удалось установить приложение. Попробуйте другой браузер.');
+      }
+    };
+
+    // После успешной установки
     window.addEventListener('appinstalled', () => {
-      document.getElementById('installBtn').style.display = 'none';
+      console.log('PWA установлено');
+      document.getElementById('installBtn').classList.remove('show');
+      document.getElementById('playBrowserBtn').classList.remove('show');
       document.getElementById('welcomeScreen').style.display = 'none';
       checkFirstLaunch();
     });
 
+    // Проверка первого запуска
     function checkFirstLaunch() {
       const hasNickname = localStorage.getItem('playerNickname');
       if (hasNickname) {
@@ -827,12 +868,39 @@
       }
     }
 
+    // Инициализация в зависимости от режима
     if (isStandalone) {
+      // Уже установлено
       document.getElementById('welcomeScreen').style.display = 'none';
       checkFirstLaunch();
     } else {
+      // В браузере
       document.getElementById('welcomeScreen').style.display = 'flex';
+      
+      // Показываем кнопку "Играть в браузере"
+      const playBtn = document.getElementById('playBrowserBtn');
+      playBtn.classList.add('show');
+      playBtn.onclick = function() {
+        document.getElementById('welcomeScreen').style.display = 'none';
+        checkFirstLaunch();
+      };
+      
+      // Если PWA поддерживается, ждем события установки
+      if (isPWASupported()) {
+        document.getElementById('welcomeMessage').textContent = 'Установите игру для полного опыта';
+      } else {
+        document.getElementById('welcomeMessage').textContent = 'Ваш браузер не поддерживает установку';
+        playBtn.classList.add('show');
+      }
     }
+
+    // Ручной запуск игры (для совместимости)
+    window.startGame = () => {
+      document.getElementById('lobbyScreen').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'block';
+      document.getElementById('gameUI').style.display = 'block';
+      initGame();
+    };
 
     // ========== КОМПИЛЯЦИЯ ФУНКЦИЙ ПЕРСОНАЖА ==========
     function compileCharacterFunctions() {
@@ -854,13 +922,6 @@
     let charFunctions;
     const W = window.innerWidth, H = window.innerHeight;
 
-    window.startGame = () => {
-      document.getElementById('lobbyScreen').style.display = 'none';
-      document.getElementById('gameContainer').style.display = 'block';
-      document.getElementById('gameUI').style.display = 'block';
-      initGame();
-    };
-
     function initGame() {
       charFunctions = compileCharacterFunctions();
       maxHP = selectedCharacter.stats.hp;
@@ -874,7 +935,6 @@
       camera.position.set(0, 45, 35);
       camera.lookAt(0, 0, 0);
       
-      // Удаляем старый renderer если есть
       const oldCanvas = document.querySelector('canvas');
       if (oldCanvas) oldCanvas.remove();
       
@@ -925,7 +985,6 @@
         scene.add(bush);
       });
       
-      // Используем кастомную модель или дефолтную
       const playerColor = parseInt(selectedCharacter.stats.color.replace('#', ''), 16);
       if (charFunctions.createModel) {
         player = charFunctions.createModel(scene, playerColor);
@@ -1045,12 +1104,10 @@
       if (!gameRunning) return;
       requestAnimationFrame(animate);
       
-      // Пассивная способность
       if (charFunctions.passive) {
         charFunctions.passive(player);
       }
       
-      // Движение игрока
       if (moveAngle !== null) {
         player.position.x += Math.cos(moveAngle) * selectedCharacter.stats.speed;
         player.position.z += Math.sin(moveAngle) * selectedCharacter.stats.speed;
@@ -1062,7 +1119,6 @@
       camera.position.z = player.position.z + 35;
       camera.lookAt(player.position.x, 0, player.position.z);
       
-      // Кастомная атака
       if (attackAngle !== null && player && gameRunning) {
         if (!player.userData?.shootCooldown || player.userData.shootCooldown <= 0) {
           charFunctions.attack(player, enemies, bullets, scene, attackAngle, 20);
@@ -1076,13 +1132,6 @@
         player.userData.shootCooldown--;
       }
       
-      // Особая способность (активируется двойным тапом)
-      if (player.userData?.abilityReady && charFunctions.ability) {
-        charFunctions.ability(player, enemies, scene);
-        player.userData.abilityReady = false;
-      }
-      
-      // Движение врагов
       enemies.forEach(enemy => {
         if (!enemy.alive) {
           enemy.respawnTimer--;
@@ -1121,7 +1170,6 @@
         if (enemy.shootCooldown > 0) enemy.shootCooldown--;
       });
       
-      // Обработка пуль
       bullets = bullets.filter(b => {
         b.position.x += b.userData.vx;
         b.position.z += b.userData.vz;
@@ -1132,7 +1180,6 @@
           return false; 
         }
         
-        // Попадание в игрока
         if (b.material.color.getHex() === 0xff0000) {
           const d = player.position.distanceTo(b.position);
           if (d < 2) {
@@ -1144,7 +1191,6 @@
           }
         }
         
-        // Попадание во врагов (любые не красные пули)
         if (b.material.color.getHex() !== 0xff0000) {
           for (let enemy of enemies) {
             if (!enemy.alive) continue;
@@ -1213,7 +1259,9 @@
     });
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.log('Service Worker не зарегистрирован:', err);
+      });
     }
   </script>
 </body>
