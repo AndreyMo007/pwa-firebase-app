@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover, maximum-scale=1.5">
-  <title>MAS Messenger | Вход и регистрация</title>
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="MAS Messenger - Быстрый и безопасный мессенджер">
+  <title>MAS Messenger</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <style>
     * {
@@ -467,6 +471,41 @@
       border: 3px solid var(--accent);
       cursor: pointer;
     }
+    .install-banner {
+      background: var(--accent);
+      color: white;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 8px;
+      border-radius: 14px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    @keyframes slideUp {
+      from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+    .update-banner {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: white;
+      padding: 14px 24px;
+      border-radius: 50px;
+      z-index: 10000;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    }
     ::-webkit-scrollbar {
       width: 6px;
     }
@@ -502,8 +541,8 @@
             <input type="file" id="regAvatar" accept="image/*">
             <button onclick="register()">Зарегистрироваться</button>
             <div id="verificationSection" style="display:none; margin-top:15px;">
-              <input type="text" id="verificationCode" placeholder="Код из письма">
-              <button id="verifyCodeBtn" style="background:var(--success)">Подтвердить</button>
+              <input type="text" id="verificationCode" placeholder="Код из письма" maxlength="6">
+              <button id="verifyCodeBtn" style="background:var(--success)" onclick="verifyCode()">Подтвердить</button>
             </div>
           </div>
         </div>
@@ -514,7 +553,7 @@
     <div id="mainApp" class="page">
       <div class="main-layout">
         <div class="sidebar">
-          <div class="nav-menu-item" data-tab="profile">👤 Профиль</div>
+          <div class="nav-menu-item active" data-tab="profile">👤 Профиль</div>
           <div class="nav-menu-item" data-tab="chats">💬 Чаты</div>
           <div class="nav-menu-item" data-tab="contacts">📞 Контакты</div>
           <div class="nav-menu-item" data-tab="settings">⚙️ Настройки</div>
@@ -589,6 +628,11 @@
 
     <!-- СТРАНИЦА ЧАТА -->
     <div id="chatPage" class="page">
+      <!-- КНОПКА УСТАНОВКИ PWA -->
+      <div id="installBanner" class="install-banner" style="display:none;" onclick="installApp()">
+        📲 Установить приложение MAS
+      </div>
+      
       <div class="chat-container">
         <div class="chat-header" id="chatHeader">
           <div class="chat-header-back" onclick="closeChat()">← Назад</div>
@@ -600,7 +644,7 @@
         </div>
         <div class="messages-area" id="messagesContainer"></div>
         <div class="input-area">
-          <textarea id="messageInput" placeholder="Сообщение..." rows="1"></textarea>
+          <textarea id="messageInput" placeholder="Сообщение..." rows="1" onkeypress="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
           <button onclick="sendMessage()">📤</button>
         </div>
       </div>
@@ -633,7 +677,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // EmailJS инициализация
     emailjs.init("popGxqPJLrqP3ySB4");
 
     let currentUserData = null;
@@ -643,12 +686,25 @@
     let activeOtherUser = null;
     let pendingRegistration = null;
     let verificationCode = null;
+    let deferredPrompt = null;
+    let refreshing = false;
 
-    // ========== ФУНКЦИИ СТРАНИЦ ==========
+    // ========== НАВИГАЦИЯ ==========
     window.showPage = (id) => {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(id).classList.add('active');
     };
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+      document.getElementById(tab + 'Tab').style.display = 'block';
+      document.querySelectorAll('.nav-menu-item').forEach(i => i.classList.remove('active'));
+      const btn = document.querySelector(`[data-tab="${tab}"]`);
+      if (btn) btn.classList.add('active');
+      if (tab === 'chats') renderChats();
+      if (tab === 'contacts') renderContacts();
+      if (tab === 'settings') updateNotificationStatus();
+    }
 
     // ========== АВТОРИЗАЦИЯ ==========
     window.login = async () => {
@@ -686,21 +742,16 @@
       if (password.length < 6) return alert('Пароль минимум 6 символов!');
       if (password !== confirm) return alert('Пароли не совпадают!');
 
-      // Проверка существования
       try {
         await signInWithEmailAndPassword(auth, email, 'test123456');
         return alert('Эта почта уже зарегистрирована!');
       } catch (e) {
-        if (e.code !== 'auth/user-not-found') {
-          return alert('Эта почта уже используется!');
-        }
+        if (e.code !== 'auth/user-not-found') return alert('Эта почта уже используется!');
       }
 
-      // Генерируем код
       verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       pendingRegistration = { email, username, password };
 
-      // Отправляем через EmailJS
       try {
         await emailjs.send("service_bmmno0o", "template_wlrjvkf", {
           to_email: email,
@@ -710,7 +761,6 @@
         alert('Код подтверждения отправлен на ' + email);
       } catch (e) {
         console.warn('EmailJS ошибка:', e);
-        // Регистрируем без кода если EmailJS не сработал
         await finishRegistration(email, username, password);
       }
     };
@@ -1007,16 +1057,64 @@
       updateNotificationStatus();
     };
 
-    // ========== НАВИГАЦИЯ ==========
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-      document.getElementById(tab + 'Tab').style.display = 'block';
-      document.querySelectorAll('.nav-menu-item').forEach(i => i.classList.remove('active'));
-      const btn = document.querySelector(`[data-tab="${tab}"]`);
-      if (btn) btn.classList.add('active');
-      if (tab === 'chats') renderChats();
-      if (tab === 'contacts') renderContacts();
-      if (tab === 'settings') updateNotificationStatus();
+    // ========== PWA УСТАНОВКА ==========
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBanner').style.display = 'block';
+    });
+
+    window.installApp = async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('installBanner').style.display = 'none';
+        console.log('✅ Приложение установлено!');
+      }
+      deferredPrompt = null;
+    };
+
+    window.addEventListener('appinstalled', () => {
+      document.getElementById('installBanner').style.display = 'none';
+      console.log('✅ Приложение установлено!');
+    });
+
+    // ========== АВТООБНОВЛЕНИЕ ==========
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+
+    setInterval(() => {
+      navigator.serviceWorker?.getRegistration().then(reg => {
+        if (reg) reg.update();
+      });
+    }, 3600000);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              const banner = document.createElement('div');
+              banner.className = 'update-banner';
+              banner.innerHTML = '🔄 Доступно обновление! Нажмите';
+              banner.onclick = () => {
+                banner.remove();
+                refreshing = true;
+                navigator.serviceWorker.controller.postMessage('skipWaiting');
+                window.location.reload();
+              };
+              document.body.appendChild(banner);
+              setTimeout(() => banner.remove(), 10000);
+            }
+          });
+        });
+      });
     }
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ ==========
@@ -1036,7 +1134,6 @@
         document.getElementById('profileUsername').textContent = currentUserData.username;
         if (currentUserData.photoURL) document.getElementById('profileAvatar').src = currentUserData.photoURL;
         
-        // Подписка на обновления контактов
         if (unsubscribeContacts) unsubscribeContacts();
         unsubscribeContacts = onSnapshot(doc(db, 'users', user.uid), (snap) => {
           if (snap.exists()) {
@@ -1049,7 +1146,6 @@
         showPage('mainApp');
         switchTab('profile');
         
-        // Навигация
         document.querySelectorAll('.nav-menu-item[data-tab]').forEach(b => {
           b.onclick = () => switchTab(b.getAttribute('data-tab'));
         });
@@ -1057,7 +1153,6 @@
         loadSettings();
         applyTheme();
         
-        // Обновление lastSeen
         await updateDoc(doc(db, 'users', user.uid), { lastSeen: serverTimestamp() });
         setInterval(async () => {
           if (auth.currentUser) {
@@ -1073,107 +1168,18 @@
       }
     });
 
-    // Клик на аватарку
+    // Регистрация Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ SW зарегистрирован:', reg.scope))
+        .catch(err => console.log('❌ SW ошибка:', err));
+    }
+
+    // Клик на аватарку профиля
     setTimeout(() => {
       const avatar = document.getElementById('profileAvatar');
       if (avatar) avatar.onclick = () => document.getElementById('newAvatarInput').click();
     }, 1000);
-    // ========== ПРОВЕРКА ОБНОВЛЕНИЙ ==========
-    let refreshing = false;
-    
-    // Автоматическое обновление при смене Service Worker
-    navigator.serviceWorker?.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-    
-    // Проверка обновлений каждый час
-    setInterval(() => {
-      if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.getRegistration().then(registration => {
-          if (registration) {
-            registration.update();
-          }
-        });
-      }
-    }, 3600000); // 1 час
-    
-    // Показывать баннер при обнаружении обновления
-    function showUpdateBanner() {
-      const banner = document.createElement('div');
-      banner.id = 'updateBanner';
-      banner.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--accent);
-        color: white;
-        padding: 14px 24px;
-        border-radius: 50px;
-        z-index: 10000;
-        cursor: pointer;
-        font-weight: 600;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-        animation: slideUp 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-      `;
-      banner.innerHTML = '🔄 Доступно обновление! Нажмите чтобы обновить';
-      banner.onclick = () => {
-        banner.remove();
-        refreshing = true;
-        if (navigator.serviceWorker?.controller) {
-          navigator.serviceWorker.controller.postMessage('skipWaiting');
-        }
-        window.location.reload();
-      };
-      document.body.appendChild(banner);
-      
-      // Автоматически скрыть через 10 секунд
-      setTimeout(() => {
-        if (document.getElementById('updateBanner')) {
-          document.getElementById('updateBanner').remove();
-        }
-      }, 10000);
-    }
-    
-    // Отслеживание обновлений Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // Найдена новая версия!
-              console.log('🔄 Найдено обновление!');
-              showUpdateBanner();
-            }
-          });
-        });
-      });
-    }
-    
-    // Анимация для баннера
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = `
-      @keyframes slideUp {
-        from {
-          transform: translateX(-50%) translateY(100px);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(-50%) translateY(0);
-          opacity: 1;
-        }
-      }
-    `;
-    document.head.appendChild(styleSheet);
   </script>
 </body>
 </html>
