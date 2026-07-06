@@ -46,26 +46,50 @@
     .score-display { color: #ffd93d; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(255,217,61,0.5); }
     .timer { color: white; font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 12px; }
     
+    /* ДЖОЙСТИКИ — ПОДНЯТЫ ВЫШЕ */
     .joystick {
-      position: absolute; bottom: 30px; width: 110px; height: 110px; z-index: 20;
+      position: absolute; bottom: 120px; width: 120px; height: 120px; z-index: 20;
     }
-    #moveJoystick { left: 25px; }
-    #attackJoystick { right: 25px; }
-    .joystick-base {
-      width: 100%; height: 100%; background: rgba(255,255,255,0.08);
-      border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); position: relative;
-      backdrop-filter: blur(5px);
+    #moveJoystick { left: 30px; }
+    #attackJoystick { right: 30px; }
+    
+    /* СИНИЙ ДЖОЙСТИК ДЛЯ ДВИЖЕНИЯ */
+    #moveJoystick .joystick-base {
+      width: 100%; height: 100%; background: rgba(68, 136, 255, 0.15);
+      border-radius: 50%; border: 3px solid rgba(68, 136, 255, 0.5); position: relative;
+      box-shadow: 0 0 20px rgba(68, 136, 255, 0.2);
     }
-    .joystick-thumb {
-      width: 45px; height: 45px; background: rgba(255,255,255,0.35);
+    #moveJoystick .joystick-thumb {
+      width: 50px; height: 50px; background: rgba(68, 136, 255, 0.7);
       border-radius: 50%; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.6);
-      pointer-events: none; box-shadow: 0 0 15px rgba(255,255,255,0.2);
+      transform: translate(-50%, -50%); border: 2px solid #4488ff;
+      box-shadow: 0 0 15px rgba(68, 136, 255, 0.5); pointer-events: none;
     }
+    
+    /* КРАСНЫЙ ДЖОЙСТИК ДЛЯ АТАКИ */
+    #attackJoystick .joystick-base {
+      width: 100%; height: 100%; background: rgba(255, 68, 68, 0.15);
+      border-radius: 50%; border: 3px solid rgba(255, 68, 68, 0.5); position: relative;
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+    }
+    #attackJoystick .joystick-thumb {
+      width: 50px; height: 50px; background: rgba(255, 68, 68, 0.7);
+      border-radius: 50%; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); border: 2px solid #ff4444;
+      box-shadow: 0 0 15px rgba(255, 68, 68, 0.5); pointer-events: none;
+    }
+    
     .joystick-label {
-      position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
-      color: rgba(255,255,255,0.5); font-size: 10px; font-weight: bold;
-      text-transform: uppercase; letter-spacing: 2px;
+      position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
+    }
+    #moveJoystick .joystick-label { color: rgba(68, 136, 255, 0.8); }
+    #attackJoystick .joystick-label { color: rgba(255, 68, 68, 0.8); }
+    
+    /* ИНДИКАТОР АКТИВНОСТИ */
+    .joystick.active .joystick-base {
+      border-color: rgba(255,255,255,0.8) !important;
+      box-shadow: 0 0 30px rgba(255,255,255,0.3) !important;
     }
     
     .game-over {
@@ -74,15 +98,11 @@
       flex-direction: column; align-items: center; justify-content: center;
       color: white; text-align: center;
     }
-    .game-over h2 { font-size: 3rem; background: linear-gradient(45deg, #ff6b6b, #ffd93d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+    .game-over h2 { font-size: 3rem; margin-bottom: 10px; }
     .game-over .final-score { font-size: 2rem; color: #ffd93d; margin-bottom: 20px; }
     .game-over button { background: linear-gradient(135deg, #6bcb77, #4d96ff); color: white; padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; cursor: pointer; border: none; font-weight: 700; }
     
     .hidden { display: none !important; }
-    
-    @media (orientation: portrait) {
-      .welcome-screen h1 { font-size: 2rem; }
-    }
   </style>
 </head>
 <body>
@@ -91,7 +111,7 @@
   <div id="welcomeScreen" class="welcome-screen">
     <div class="logo">⚔️</div>
     <h1>3D Brawl Arena</h1>
-    <p>Горизонтальный режим • Два джойстика</p>
+    <p>Синий — движение | Красный — атака</p>
     <button id="installBtn" class="install-btn hidden" onclick="installApp()">📲 Установить игру</button>
     <button id="openBtn" class="open-btn hidden" onclick="startGame()">🎮 Играть в браузере</button>
     <p style="margin-top:12px;opacity:0.4;font-size:0.8rem;">Поверните телефон горизонтально</p>
@@ -105,15 +125,17 @@
       <div class="score-display" id="scoreDisplay">🏆 0</div>
     </div>
     
+    <!-- СИНИЙ ДЖОЙСТИК ДВИЖЕНИЯ -->
     <div class="joystick" id="moveJoystick">
-      <div class="joystick-label">Движение</div>
+      <div class="joystick-label">ДВИЖЕНИЕ</div>
       <div class="joystick-base" id="moveBase">
         <div class="joystick-thumb" id="moveThumb"></div>
       </div>
     </div>
     
+    <!-- КРАСНЫЙ ДЖОЙСТИК АТАКИ -->
     <div class="joystick" id="attackJoystick">
-      <div class="joystick-label">Атака</div>
+      <div class="joystick-label">АТАКА</div>
       <div class="joystick-base" id="attackBase">
         <div class="joystick-thumb" id="attackThumb"></div>
       </div>
@@ -149,17 +171,12 @@
       document.getElementById('openBtn').classList.remove('hidden');
     });
 
-    // Запуск
     function bootGame() {
       document.getElementById('welcomeScreen').classList.add('hidden');
       document.getElementById('gameContainer').style.display = 'block';
-      // Запрос полноэкранного режима
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
       }
-      // Блокировка ориентации
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
       }
@@ -177,143 +194,73 @@
 
     // ========== 3D ИГРА ==========
     let scene, camera, renderer;
-    let player, playerBody, enemies = [], bullets = [];
+    let player, enemies = [], bullets = [];
     let moveAngle = null, attackAngle = null;
     let score = 0, gameTime = 120, gameRunning = false, timerInterval;
     let playerHP = 120, maxHP = 120;
     let W, H;
 
     function initGame() {
-      W = window.innerWidth;
-      H = window.innerHeight;
-      
-      // Очистка предыдущей игры
-      if (renderer) {
-        renderer.dispose();
-        document.querySelectorAll('canvas').forEach(c => c.remove());
-      }
-      enemies = [];
-      bullets = [];
-      score = 0;
-      gameTime = 120;
-      gameRunning = true;
-      playerHP = maxHP;
+      W = window.innerWidth; H = window.innerHeight;
+      if (renderer) { renderer.dispose(); document.querySelectorAll('canvas').forEach(c => c.remove()); }
+      enemies = []; bullets = []; score = 0; gameTime = 120; gameRunning = true; playerHP = maxHP;
       
       scene = new THREE.Scene();
-      
-      // Красивый градиентный фон
       const bgCanvas = document.createElement('canvas');
       bgCanvas.width = 512; bgCanvas.height = 512;
       const bgCtx = bgCanvas.getContext('2d');
       const gradient = bgCtx.createLinearGradient(0, 0, 0, 512);
-      gradient.addColorStop(0, '#87CEEB');
-      gradient.addColorStop(0.4, '#98FB98');
-      gradient.addColorStop(0.6, '#228B22');
-      gradient.addColorStop(1, '#1a5c1a');
-      bgCtx.fillStyle = gradient;
-      bgCtx.fillRect(0, 0, 512, 512);
-      const bgTexture = new THREE.CanvasTexture(bgCanvas);
-      scene.background = bgTexture;
+      gradient.addColorStop(0, '#87CEEB'); gradient.addColorStop(0.4, '#98FB98');
+      gradient.addColorStop(0.6, '#228B22'); gradient.addColorStop(1, '#1a5c1a');
+      bgCtx.fillStyle = gradient; bgCtx.fillRect(0, 0, 512, 512);
+      scene.background = new THREE.CanvasTexture(bgCanvas);
       scene.fog = new THREE.Fog(0x87CEEB, 40, 100);
       
-      camera = new THREE.PerspectiveCamera(55, W / H, 1, 500);
-      camera.position.set(0, 50, 40);
-      camera.lookAt(0, 0, 0);
+      camera = new THREE.PerspectiveCamera(55, W/H, 1, 500);
+      camera.position.set(0, 50, 40); camera.lookAt(0, 0, 0);
       
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(W, H);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       document.getElementById('gameContainer').appendChild(renderer.domElement);
       
-      // Солнечный свет
       const sun = new THREE.DirectionalLight(0xfff5e6, 1.2);
-      sun.position.set(30, 40, 20);
-      sun.castShadow = true;
+      sun.position.set(30, 40, 20); sun.castShadow = true;
       sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
       sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
       sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
-      sun.shadow.bias = -0.001;
       scene.add(sun);
-      
       scene.add(new THREE.AmbientLight(0x6688aa, 0.6));
-      scene.add(new THREE.HemisphereLight(0x87CEEB, 0x228B22, 0.4));
       
-      // Земля с текстурой
-      const groundGeo = new THREE.PlaneGeometry(100, 100);
-      const groundCanvas = document.createElement('canvas');
-      groundCanvas.width = 256; groundCanvas.height = 256;
-      const gctx = groundCanvas.getContext('2d');
-      gctx.fillStyle = '#4CAF50';
-      gctx.fillRect(0, 0, 256, 256);
-      for (let i = 0; i < 200; i++) {
-        gctx.fillStyle = `rgba(${50+Math.random()*50},${150+Math.random()*100},${30+Math.random()*50},0.3)`;
-        gctx.fillRect(Math.random()*256, Math.random()*256, 4, 4);
-      }
-      const groundTex = new THREE.CanvasTexture(groundCanvas);
-      groundTex.wrapS = THREE.RepeatWrapping;
-      groundTex.wrapT = THREE.RepeatWrapping;
-      groundTex.repeat.set(5, 5);
-      const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: groundTex }));
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        new THREE.MeshLambertMaterial({ color: 0x4CAF50 })
+      );
+      ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
       scene.add(ground);
       
-      // Препятствия
-      const obstaclePositions = [
+      const obs = [
         {x:-18,z:-18},{x:18,z:18},{x:-18,z:18},{x:18,z:-18},
-        {x:0,z:-25},{x:0,z:25},{x:-25,z:0},{x:25,z:0},
-        {x:-12,z:-12},{x:12,z:12},{x:-12,z:12},{x:12,z:-12}
+        {x:0,z:-25},{x:0,z:25},{x:-25,z:0},{x:25,z:0}
       ];
-      
-      obstaclePositions.forEach(pos => {
-        const group = new THREE.Group();
-        
-        // Камень
-        const rockGeo = new THREE.DodecahedronGeometry(2 + Math.random(), 0);
-        const rock = new THREE.Mesh(rockGeo, new THREE.MeshLambertMaterial({ color: 0x888888 }));
-        rock.position.y = 1.5;
-        rock.castShadow = true;
-        rock.receiveShadow = true;
-        group.add(rock);
-        
-        // Кристалл сверху
-        const crystalGeo = new THREE.OctahedronGeometry(0.6);
-        const crystalColors = [0xff6b6b, 0x4d96ff, 0xffd93d, 0x6bcb77];
-        const crystal = new THREE.Mesh(crystalGeo, new THREE.MeshLambertMaterial({ 
-          color: crystalColors[Math.floor(Math.random()*4)],
-          emissive: crystalColors[Math.floor(Math.random()*4)],
-          emissiveIntensity: 0.3
-        }));
-        crystal.position.y = 3.5;
-        crystal.castShadow = true;
-        group.add(crystal);
-        
-        group.position.set(pos.x, 0, pos.z);
-        scene.add(group);
+      obs.forEach(pos => {
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(2.2, 0),
+          new THREE.MeshLambertMaterial({ color: 0x888888 })
+        );
+        rock.position.set(pos.x, 1.5, pos.z); rock.castShadow = true; rock.receiveShadow = true;
+        scene.add(rock);
+        const crystal = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.6),
+          new THREE.MeshLambertMaterial({ color: [0xff6b6b,0x4d96ff,0xffd93d,0x6bcb77][Math.floor(Math.random()*4)], emissive: 0xffffff, emissiveIntensity: 0.2 })
+        );
+        crystal.position.set(pos.x, 3.5, pos.z); scene.add(crystal);
       });
       
-      // Бордюры арены
-      for (let i = -45; i <= 45; i += 2) {
-        [-45, 45].forEach(edge => {
-          const fenceGeo = new THREE.BoxGeometry(1, 3, 1);
-          const fence = new THREE.Mesh(fenceGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }));
-          fence.position.set(i, 1.5, edge);
-          fence.castShadow = true;
-          scene.add(fence);
-          fence.position.set(edge, 1.5, i);
-          scene.add(fence.clone());
-        });
-      }
-      
-      // Игрок
-      player = createPlayerCharacter(0x4488ff);
-      
-      // Враги
-      for (let i = 0; i < 5; i++) {
-        spawnEnemy();
-      }
+      player = createCharacter(0x4488ff);
+      for (let i = 0; i < 5; i++) spawnEnemy();
       
       document.getElementById('gameOver').style.display = 'none';
       document.getElementById('hpFill').style.width = '100%';
@@ -330,112 +277,96 @@
       animate();
     }
 
-    function createPlayerCharacter(color) {
-      const group = new THREE.Group();
-      
-      // Тело (робот-стиль)
-      const bodyGeo = new THREE.CylinderGeometry(1, 1.3, 2.2, 12);
-      const bodyMat = new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.2 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.5;
-      body.castShadow = true;
-      group.add(body);
-      
-      // Броня
-      const armorGeo = new THREE.TorusGeometry(1.1, 0.15, 8, 12);
-      const armor = new THREE.Mesh(armorGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }));
-      armor.position.y = 2;
-      armor.rotation.x = Math.PI/2;
-      group.add(armor);
-      
-      // Голова
-      const headGeo = new THREE.SphereGeometry(0.8, 16, 16);
-      const head = new THREE.Mesh(headGeo, new THREE.MeshLambertMaterial({ color: 0xffdbac }));
-      head.position.y = 3.2;
-      head.castShadow = true;
-      group.add(head);
-      
-      // Шлем
-      const helmetGeo = new THREE.SphereGeometry(0.9, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
-      const helmet = new THREE.Mesh(helmetGeo, new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.3 }));
-      helmet.position.y = 3.2;
-      group.add(helmet);
-      
-      // Глаза (светящиеся)
-      const eyeGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    function createCharacter(color) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.3, 2.2, 12), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
+      body.position.y = 1.5; body.castShadow = true; g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshLambertMaterial({ color: 0xffdbac }));
+      head.position.y = 3.2; head.castShadow = true; g.add(head);
+      const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.3 }));
+      helmet.position.y = 3.2; g.add(helmet);
       const eyeMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1 });
-      const lEye = new THREE.Mesh(eyeGeo, eyeMat);
-      lEye.position.set(-0.25, 3.3, 0.7);
-      group.add(lEye);
-      const rEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rEye.position.set(0.25, 3.3, 0.7);
-      group.add(rEye);
-      
-      // Пушка
-      const gunGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8);
-      const gun = new THREE.Mesh(gunGeo, new THREE.MeshLambertMaterial({ color: 0x333333 }));
-      gun.position.set(0, 1.8, 1.2);
-      gun.rotation.x = Math.PI/2;
-      gun.castShadow = true;
-      group.add(gun);
-      
-      playerBody = group;
-      scene.add(group);
-      return group;
+      const lEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
+      lEye.position.set(-0.25, 3.3, 0.7); g.add(lEye);
+      const rEye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), eyeMat);
+      rEye.position.set(0.25, 3.3, 0.7); g.add(rEye);
+      const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8), new THREE.MeshLambertMaterial({ color: 0x333333 }));
+      gun.position.set(0, 1.8, 1.2); gun.rotation.x = Math.PI/2; g.add(gun);
+      scene.add(g);
+      return g;
     }
 
     function spawnEnemy() {
-      const colors = [0xff4444, 0xff8800, 0xff00ff, 0x00aaff, 0xff0066];
+      const colors = [0xff4444, 0xff8800, 0xff00ff, 0x00aaff];
       const color = colors[Math.floor(Math.random()*colors.length)];
-      const ex = (Math.random() - 0.5) * 60;
-      const ez = (Math.random() - 0.5) * 60;
+      const enemy = createCharacter(color);
+      enemy.position.set((Math.random()-0.5)*60, 0, (Math.random()-0.5)*60);
+      enemies.push({ mesh: enemy, hp: 80, maxHp: 80, alive: true, respawnTimer: 0, shootCooldown: 0, speed: 0.04 + Math.random()*0.03 });
+    }
+
+    // ========== ДЖОЙСТИКИ (ОДНОВРЕМЕННАЯ РАБОТА) ==========
+    function setupJoysticks() {
+      // Синий — движение
+      createJoystick('moveJoystick', 'moveBase', 'moveThumb', (a) => moveAngle = a);
+      // Красный — атака
+      createJoystick('attackJoystick', 'attackBase', 'attackThumb', (a) => attackAngle = a);
+    }
+
+    function createJoystick(containerId, baseId, thumbId, callback) {
+      const container = document.getElementById(containerId);
+      const base = document.getElementById(baseId);
+      const thumb = document.getElementById(thumbId);
+      let activeTouchId = null;
       
-      const enemy = createPlayerCharacter(color);
-      enemy.position.set(ex, 0, ez);
+      container.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (activeTouchId === null) {
+          const touch = e.changedTouches[0];
+          activeTouchId = touch.identifier;
+          container.classList.add('active');
+          updateJoystick(touch, base, thumb, callback);
+        }
+      }, { passive: false });
       
-      enemies.push({
-        mesh: enemy,
-        hp: 80,
-        maxHp: 80,
-        alive: true,
-        respawnTimer: 0,
-        shootCooldown: 0,
-        speed: 0.04 + Math.random() * 0.03
+      container.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (let touch of e.changedTouches) {
+          if (touch.identifier === activeTouchId) {
+            updateJoystick(touch, base, thumb, callback);
+          }
+        }
+      }, { passive: false });
+      
+      container.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        for (let touch of e.changedTouches) {
+          if (touch.identifier === activeTouchId) {
+            activeTouchId = null;
+            container.classList.remove('active');
+            thumb.style.transform = 'translate(-50%, -50%)';
+            callback(null);
+          }
+        }
+      });
+      
+      container.addEventListener('touchcancel', (e) => {
+        activeTouchId = null;
+        container.classList.remove('active');
+        thumb.style.transform = 'translate(-50%, -50%)';
+        callback(null);
       });
     }
 
-    // ========== ДЖОЙСТИКИ ==========
-    function setupJoysticks() {
-      createJoystick('moveBase', 'moveThumb', (a) => moveAngle = a);
-      createJoystick('attackBase', 'attackThumb', (a) => attackAngle = a);
-    }
-
-    function createJoystick(baseId, thumbId, callback) {
-      const base = document.getElementById(baseId);
-      const thumb = document.getElementById(thumbId);
-      let active = false;
-      
-      const handlers = {
-        start: (e) => { e.preventDefault(); active = true; update(e.touches ? e.touches[0] : e); },
-        move: (e) => { e.preventDefault(); if (active) update(e.touches ? e.touches[0] : e); },
-        end: (e) => { e.preventDefault(); active = false; thumb.style.transform = 'translate(-50%, -50%)'; callback(null); }
-      };
-      
-      base.addEventListener('touchstart', handlers.start, {passive: false});
-      base.addEventListener('touchmove', handlers.move, {passive: false});
-      base.addEventListener('touchend', handlers.end);
-      
-      function update(touch) {
-        const rect = base.getBoundingClientRect();
-        const cx = rect.left + rect.width/2;
-        const cy = rect.top + rect.height/2;
-        const dx = touch.clientX - cx;
-        const dy = touch.clientY - cy;
-        const dist = Math.min(Math.sqrt(dx*dx+dy*dy), 45);
-        const angle = Math.atan2(dy, dx);
-        thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
-        callback(dist > 8 ? angle : null);
-      }
+    function updateJoystick(touch, base, thumb, callback) {
+      const rect = base.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const dx = touch.clientX - cx;
+      const dy = touch.clientY - cy;
+      const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 45);
+      const angle = Math.atan2(dy, dx);
+      thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+      callback(dist > 8 ? angle : null);
     }
 
     // ========== АНИМАЦИЯ ==========
@@ -445,7 +376,6 @@
       if (!gameRunning) return;
       requestAnimationFrame(animate);
       
-      // Движение игрока
       if (moveAngle !== null && player) {
         player.position.x += Math.cos(moveAngle) * 0.18;
         player.position.z += Math.sin(moveAngle) * 0.18;
@@ -454,113 +384,80 @@
         player.rotation.y = -moveAngle + Math.PI/2;
       }
       
-      // Камера
       camera.position.x += (player.position.x - camera.position.x) * 0.1;
       camera.position.z = player.position.z + 38;
       camera.lookAt(player.position.x, 0, player.position.z);
       
-      // Стрельба
       const now = Date.now();
       if (attackAngle !== null && player && now - lastShot > 120) {
         lastShot = now;
         const bx = player.position.x + Math.cos(attackAngle) * 2;
         const bz = player.position.z + Math.sin(attackAngle) * 2;
-        
-        const bulletGeo = new THREE.SphereGeometry(0.35, 8, 8);
-        const bulletMat = new THREE.MeshLambertMaterial({ 
-          color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.8 
-        });
-        const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+        const bullet = new THREE.Mesh(
+          new THREE.SphereGeometry(0.35, 8, 8),
+          new THREE.MeshLambertMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.8 })
+        );
         bullet.position.set(bx, 2, bz);
-        bullet.userData = {
-          vx: Math.cos(attackAngle) * 0.8,
-          vz: Math.sin(attackAngle) * 0.8,
-          life: 100,
-          fromPlayer: true
-        };
-        scene.add(bullet);
-        bullets.push(bullet);
+        bullet.userData = { vx: Math.cos(attackAngle)*0.8, vz: Math.sin(attackAngle)*0.8, life: 100, fromPlayer: true };
+        scene.add(bullet); bullets.push(bullet);
       }
       
-      // Враги
       enemies.forEach(enemy => {
         if (!enemy.alive) {
           enemy.respawnTimer--;
           if (enemy.respawnTimer <= 0) {
-            enemy.alive = true;
-            enemy.hp = enemy.maxHp;
+            enemy.alive = true; enemy.hp = enemy.maxHp;
             enemy.mesh.visible = true;
             enemy.mesh.position.set((Math.random()-0.5)*70, 0, (Math.random()-0.5)*70);
           }
           return;
         }
-        
         const dx = player.position.x - enemy.mesh.position.x;
         const dz = player.position.z - enemy.mesh.position.z;
         const dist = Math.sqrt(dx*dx + dz*dz);
-        
-        if (dist > 6) {
-          enemy.mesh.position.x += (dx/dist) * enemy.speed;
-          enemy.mesh.position.z += (dz/dist) * enemy.speed;
-        }
-        
+        if (dist > 6) { enemy.mesh.position.x += (dx/dist)*enemy.speed; enemy.mesh.position.z += (dz/dist)*enemy.speed; }
         enemy.mesh.lookAt(player.position.x, 0, player.position.z);
-        
         if (dist < 30 && enemy.shootCooldown <= 0) {
           const angle = Math.atan2(dz, dx);
-          const bulletGeo = new THREE.SphereGeometry(0.25, 6, 6);
-          const bulletMat = new THREE.MeshLambertMaterial({ 
-            color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 
-          });
-          const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-          bullet.position.copy(enemy.mesh.position);
-          bullet.position.y = 2;
+          const bullet = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 6, 6),
+            new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 })
+          );
+          bullet.position.copy(enemy.mesh.position); bullet.position.y = 2;
           bullet.userData = { vx: Math.cos(angle)*0.5, vz: Math.sin(angle)*0.5, life: 80, fromPlayer: false };
-          scene.add(bullet);
-          bullets.push(bullet);
-          enemy.shootCooldown = 50 + Math.random() * 30;
+          scene.add(bullet); bullets.push(bullet);
+          enemy.shootCooldown = 50 + Math.random()*30;
         }
         if (enemy.shootCooldown > 0) enemy.shootCooldown--;
       });
       
-      // Пули
-      for (let i = bullets.length - 1; i >= 0; i--) {
+      for (let i = bullets.length-1; i >= 0; i--) {
         const b = bullets[i];
-        b.position.x += b.userData.vx;
-        b.position.z += b.userData.vz;
+        b.position.x += b.userData.vx; b.position.z += b.userData.vz;
         b.userData.life--;
+        if (b.userData.life <= 0 || Math.abs(b.position.x) > 50 || Math.abs(b.position.z) > 50) { scene.remove(b); bullets.splice(i,1); continue; }
         
-        if (b.userData.life <= 0 || Math.abs(b.position.x) > 50 || Math.abs(b.position.z) > 50) {
-          scene.remove(b); bullets.splice(i, 1); continue;
-        }
-        
-        // Попадание в игрока
         if (!b.userData.fromPlayer && playerHP > 0) {
           const d = player.position.distanceTo(b.position);
           if (d < 2.5) {
             playerHP -= 8;
-            document.getElementById('hpFill').style.width = Math.max(0, playerHP/maxHP*100) + '%';
-            scene.remove(b); bullets.splice(i, 1);
-            if (playerHP <= 0) endGame(false);
-            continue;
+            document.getElementById('hpFill').style.width = Math.max(0, playerHP/maxHP*100)+'%';
+            scene.remove(b); bullets.splice(i,1);
+            if (playerHP <= 0) endGame(false); continue;
           }
         }
         
-        // Попадание во врагов
         if (b.userData.fromPlayer) {
           for (let enemy of enemies) {
             if (!enemy.alive) continue;
             const d = enemy.mesh.position.distanceTo(b.position);
             if (d < 3) {
-              enemy.hp -= 25;
-              scene.remove(b); bullets.splice(i, 1);
+              enemy.hp -= 25; scene.remove(b); bullets.splice(i,1);
               if (enemy.hp <= 0) {
-                enemy.alive = false;
-                enemy.mesh.visible = false;
-                enemy.respawnTimer = 90;
+                enemy.alive = false; enemy.mesh.visible = false; enemy.respawnTimer = 90;
                 score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 ' + score;
-                if (enemies.filter(e => e.alive).length < 3) spawnEnemy();
+                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
+                if (enemies.filter(e=>e.alive).length < 3) spawnEnemy();
               }
               break;
             }
@@ -568,30 +465,18 @@
         }
       }
       
-      // Вращение кристаллов
       scene.children.forEach(child => {
-        if (child.children && child.children.length > 1) {
-          const crystal = child.children[1];
-          if (crystal && crystal.geometry?.type === 'OctahedronGeometry') {
-            crystal.rotation.y += 0.02;
-          }
-        }
+        if (child.geometry?.type === 'OctahedronGeometry') child.rotation.y += 0.02;
       });
       
       renderer.render(scene, camera);
     }
 
     function endGame(won) {
-      gameRunning = false;
-      clearInterval(timerInterval);
+      gameRunning = false; clearInterval(timerInterval);
       document.getElementById('gameOver').style.display = 'flex';
-      document.getElementById('gameOverScore').textContent = '🏆 ' + score;
+      document.getElementById('gameOverScore').textContent = '🏆 '+score;
       document.getElementById('gameOverTitle').textContent = won ? 'Победа!' : 'Поражение';
-      document.getElementById('gameOverTitle').style.background = won ? 
-        'linear-gradient(45deg, #6bcb77, #ffd93d)' : 
-        'linear-gradient(45deg, #ff6b6b, #ff0000)';
-      document.getElementById('gameOverTitle').style.webkitBackgroundClip = 'text';
-      document.getElementById('gameOverTitle').style.webkitTextFillColor = 'transparent';
     }
 
     window.restartGame = () => {
@@ -602,21 +487,15 @@
       initGame();
     };
 
-    // Обработка изменения размера
     window.addEventListener('resize', () => {
       if (renderer && gameRunning) {
         W = window.innerWidth; H = window.innerHeight;
-        renderer.setSize(W, H);
-        camera.aspect = W / H;
-        camera.updateProjectionMatrix();
+        renderer.setSize(W, H); camera.aspect = W/H; camera.updateProjectionMatrix();
       }
     });
 
-    // Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
-        reg.update();
-      }).catch(() => {});
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   </script>
 </body>
