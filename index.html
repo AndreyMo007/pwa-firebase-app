@@ -1,1431 +1,2657 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
-  <meta name="description" content="3D Brawl Arena">
-  <meta name="screen-orientation" content="landscape">
-  <title>3D Brawl Arena</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#c4203a">
+    <meta name="description" content="ВАСТА — пространство гармонии, астрологии и изотерики">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ВАСТА">
     
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      font-family: 'Arial', sans-serif;
-      background: #000;
-      position: fixed;
-      top: 0;
-      left: 0;
-    }
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
     
-    /* Принудительная ландшафтная ориентация через CSS */
-    @media screen and (orientation: portrait) {
-      html {
-        transform: rotate(90deg);
-        transform-origin: center center;
-        width: 100vh;
-        height: 100vw;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-left: -50vh;
-        margin-top: -50vw;
-      }
-    }
+    <!-- iOS иконки -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
     
-    .welcome-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #1a0033, #0a0a2e);
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
+    <title>ВАСТА — Гармония пространства</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     
-    .welcome-screen .logo {
-      font-size: 60px;
-      animation: bounce 1.5s infinite;
-    }
-    
-    @keyframes bounce {
-      0%,100%{transform:translateY(0)}
-      50%{transform:translateY(-20px)}
-    }
-    
-    .welcome-screen h1 {
-      font-size: 2rem;
-      background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 10px 0;
-    }
-    
-    .install-btn {
-      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-      color: white;
-      padding: 15px 40px;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      box-shadow: 0 10px 30px rgba(255,107,107,0.4);
-      animation: pulse 2s infinite;
-      margin: 10px 0;
-      display: none;
-    }
-    
-    .install-btn.show {
-      display: block;
-    }
-    
-    @keyframes pulse {
-      0%,100%{box-shadow:0 10px 30px rgba(255,107,107,0.4)}
-      50%{box-shadow:0 10px 50px rgba(255,107,107,0.8)}
-    }
-    
-    .play-browser-btn {
-      background: transparent;
-      color: #ffd93d;
-      padding: 12px 25px;
-      border-radius: 50px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      border: 2px solid #ffd93d;
-      margin-top: 8px;
-      display: none;
-    }
-    
-    .play-browser-btn.show {
-      display: block;
-    }
-    
-    #gameContainer {
-      display: none;
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .nickname-screen {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #1a0033, #0a0a2e);
-      z-index: 1000;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
-    }
-    
-    .nickname-input {
-      background: rgba(255,255,255,0.1);
-      border: 2px solid #ffd93d;
-      color: white;
-      padding: 15px 25px;
-      font-size: 1.2rem;
-      border-radius: 25px;
-      text-align: center;
-      margin: 20px 0;
-      width: 250px;
-      outline: none;
-    }
-    
-    .confirm-btn {
-      background: linear-gradient(135deg, #6bcb77, #4d96ff);
-      color: white;
-      padding: 12px 35px;
-      border-radius: 50px;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      font-weight: 700;
-    }
-    
-    .lobby-screen {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #1a0033, #0a0a2e);
-      z-index: 500;
-    }
-    
-    .lobby-top-bar {
-      display: flex;
-      align-items: center;
-      padding: 10px 15px;
-      gap: 12px;
-    }
-    
-    .lobby-profile {
-      width: 50px;
-      height: 50px;
-      background: rgba(255,255,255,0.1);
-      border: 2px solid #ffd93d;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-    }
-    
-    .lobby-rect {
-      width: 50px;
-      height: 50px;
-      background: rgba(255,255,255,0.1);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 12px;
-    }
-    
-    .login-btn {
-      margin-left: auto;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      border: 1px solid rgba(255,255,255,0.3);
-      font-weight: 600;
-    }
-    
-    /* Кнопки внизу лобби */
-    .lobby-bottom-buttons {
-      position: absolute;
-      bottom: 30px;
-      left: 30px;
-      display: flex;
-      gap: 15px;
-      align-items: center;
-    }
-    
-    .play-lobby-btn {
-      background: linear-gradient(135deg, #ffd93d, #ffa500);
-      color: #000;
-      padding: 18px 45px;
-      border-radius: 15px;
-      font-size: 1.3rem;
-      font-weight: 900;
-      cursor: pointer;
-      border: none;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      box-shadow: 0 8px 25px rgba(255,217,61,0.5);
-      transition: transform 0.2s;
-    }
-    
-    .play-lobby-btn:active {
-      transform: scale(0.95);
-    }
-    
-    .mode-select-btn {
-      width: 55px;
-      height: 55px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      cursor: pointer;
-      color: white;
-      transition: all 0.3s;
-    }
-    
-    .mode-select-btn:hover {
-      border-color: #ffd93d;
-      background: rgba(255,217,61,0.1);
-    }
-    
-    .collection-btn {
-      position: absolute;
-      right: 30px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 65px;
-      height: 65px;
-      background: rgba(255,255,255,0.1);
-      border: 2px solid #ffd93d;
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      cursor: pointer;
-      color: white;
-    }
-    
-    /* Оверлей режимов */
-    .modes-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 2500;
-      padding: 20px;
-      color: white;
-    }
-    
-    .modes-scroll-container {
-      width: 100%;
-      height: calc(100% - 80px);
-      overflow-x: auto;
-      overflow-y: hidden;
-      white-space: nowrap;
-      padding: 20px 0;
-    }
-    
-    .modes-column {
-      display: inline-block;
-      width: 280px;
-      height: 100%;
-      margin-right: 20px;
-      vertical-align: top;
-      white-space: normal;
-    }
-    
-    .mode-card {
-      background: rgba(255,255,255,0.08);
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 15px;
-      cursor: pointer;
-      transition: all 0.3s;
-      height: calc(50% - 10px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    
-    .mode-card:hover {
-      border-color: #ffd93d;
-      background: rgba(255,217,61,0.1);
-    }
-    
-    .mode-card.selected {
-      border-color: #4d96ff;
-      background: rgba(77,150,255,0.2);
-    }
-    
-    .mode-icon {
-      font-size: 40px;
-      margin-bottom: 10px;
-    }
-    
-    .mode-name {
-      font-size: 1.1rem;
-      font-weight: bold;
-    }
-    
-    .collection-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 2000;
-      overflow-y: auto;
-      padding: 20px;
-      color: white;
-    }
-    
-    .collection-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    
-    .close-btn {
-      background: #ff4444;
-      color: white;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-    }
-    
-    .characters-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      padding: 10px;
-    }
-    
-    .character-card {
-      background: rgba(255,255,255,0.08);
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 15px;
-      padding: 12px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .character-card.selected {
-      border-color: #4d96ff;
-      background: rgba(77,150,255,0.2);
-    }
-    
-    .character-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
-    }
-    
-    .character-name {
-      font-weight: bold;
-      font-size: 0.9rem;
-    }
-    
-    .create-screen {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 3000;
-      color: white;
-      padding: 20px;
-      overflow-y: auto;
-    }
-    
-    .code-editor {
-      width: 100%;
-      min-height: 200px;
-      background: #1e1e1e;
-      color: #d4d4d4;
-      border: 1px solid #444;
-      border-radius: 10px;
-      padding: 12px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      resize: vertical;
-      margin: 8px 0;
-    }
-    
-    .form-group {
-      margin-bottom: 12px;
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 4px;
-      color: #ffd93d;
-      font-size: 0.9rem;
-    }
-    
-    .form-group input, .form-group select, .form-group textarea {
-      width: 100%;
-      padding: 8px 12px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-    
-    .save-btn {
-      background: linear-gradient(135deg, #6bcb77, #4d96ff);
-      color: white;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      font-weight: 700;
-      width: 100%;
-      margin-top: 15px;
-    }
-    
-    .game-ui {
-      display: none;
-    }
-    
-    .ui-top {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 10;
-      pointer-events: none;
-    }
-    
-    .hp-bar {
-      width: 120px;
-      height: 10px;
-      background: rgba(0,0,0,0.5);
-      border-radius: 8px;
-      overflow: hidden;
-      border: 2px solid white;
-    }
-    
-    .hp-fill {
-      height: 100%;
-      background: #00ff00;
-      transition: width 0.3s;
-      border-radius: 8px;
-    }
-    
-    .score {
-      color: #ffd93d;
-      font-size: 16px;
-      font-weight: bold;
-    }
-    
-    .timer {
-      color: white;
-      font-size: 18px;
-      font-weight: bold;
-      background: rgba(0,0,0,0.5);
-      padding: 4px 10px;
-      border-radius: 12px;
-    }
-    
-    .joystick {
-      position: absolute;
-      bottom: 30px;
-      width: 120px;
-      height: 120px;
-      z-index: 20;
-    }
-    
-    #moveJoystick { left: 25px; }
-    #attackJoystick { right: 25px; }
-    
-    .joystick-base {
-      width: 100%;
-      height: 100%;
-      background: rgba(255,255,255,0.08);
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.15);
-      position: relative;
-    }
-    
-    .joystick-thumb {
-      width: 50px;
-      height: 50px;
-      background: rgba(255,255,255,0.35);
-      border-radius: 50%;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border: 2px solid white;
-      pointer-events: none;
-    }
-    
-    .game-over {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.85);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      color: white;
-    }
-    
-    .game-over h2 {
-      font-size: 2rem;
-      margin-bottom: 8px;
-    }
-    
-    .game-over .final-score {
-      font-size: 1.5rem;
-      color: #ffd93d;
-      margin-bottom: 15px;
-    }
-    
-    .game-over button {
-      background: #6bcb77;
-      color: white;
-      padding: 12px 35px;
-      border-radius: 50px;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      font-weight: 700;
-    }
-    
-    .hidden { display: none !important; }
-  </style>
+    <!-- Твой CSS здесь -->
+  
+
+    <style>
+        :root {
+            --bg: #ffffff;
+            --surface: #efd362df;
+            --primary: #c4203a;
+            --primary-hover: #5c5455;
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --border: #efd362df;
+            --accent-light: #fdf2f4;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --radius-sm: 5px;
+            --transition: 0.2s ease;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #46973cbe;
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app-wrapper {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #ddcb69;
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 1.4rem;
+            letter-spacing: -0.3px;
+            color: #0f0f0f;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .logo span {
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.7rem;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            border-radius: var(--radius-sm);
+        }
+
+        /* ===== КНОПКА УСТАНОВКИ PWA ===== */
+        #installPWAButton {
+            display: none;               /* скрыта по умолчанию */
+            align-items: center;
+            gap: 0.4rem;
+            margin-left: 1rem;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            border: 2px solid var(--primary);
+            background: #fff;
+            color: var(--primary);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition);
+            border-radius: var(--radius-sm);
+            line-height: 1.2;
+        }
+        #installPWAButton:hover {
+            background: #fdf2f4;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0;
+            height: 100%;
+            align-items: stretch;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .nav-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 0 1.2rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            color: #555;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: -1px;
+        }
+        .nav-btn:hover {
+            color: #1a1a1a;
+            background: #f1f18c;
+            
+        }
+        .nav-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 700;
+        }
+        .main-content {
+            flex: 1;
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        .section-card {
+            background: var(--surface);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            animation: fadeSlide 0.4s ease;
+            width: 100%;
+            border-radius: var(--radius-sm);
+        }
+        @keyframes fadeSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .hidden-section {
+            display: none !important;
+        }
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+        .creator-photo-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/4;
+            overflow: hidden;
+            border: 5px solid #f7fda9be;
+            background: #e8e0d5;
+            flex-shrink: 0;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .creator-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.4s ease;
+        }
+        
+        .hero-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1.5rem;
+            padding-top: 0.5rem;
+        }
+        .greeting {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: #0f0f0f;
+            line-height: 1.2;
+        }
+        .creator-name {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #0f0f0f;
+            letter-spacing: -0.5px;
+            display: block;
+        }
+        .creator-name .highlight {
+            color: var(--primary);
+            position: relative;
+        }
+        .description {
+            color: #444;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            max-width: 560px;
+            font-weight: 400;
+            border-left: 4px solid var(--primary);
+            padding: 1.2rem 1.5rem;
+            background: #f9f990;
+        }
+        .action-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 1rem 2.4rem;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            width: fit-content;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-sm);
+        }
+        .action-btn:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+        .action-btn.secondary {
+            background: #fff;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .action-btn.secondary:hover {
+            background: #fdf2f4;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #0f0f0f;
+            text-transform: uppercase;
+        }
+        .section-badge {
+            background: #fdf2f4;
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.2rem 0.9rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 1px solid #f5d0d6;
+            border-radius: var(--radius-sm);
+        }
+        .static-description {
+            color: #333;
+            font-size: 1.05rem;
+            line-height: 1.8;
+            margin-bottom: 2rem;
+            background: #ffffa3;
+            padding: 1.5rem 1.8rem;
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius-sm);
+        }
+        .static-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .static-gallery img {
+            width: 110px;
+            height: 110px;
+            object-fit: cover;
+            border: 1px solid var(--border);
+            background: #f5f2ec;
+            transition: transform var(--transition);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+        }
+        .static-gallery img:hover {
+            transform: scale(1.04);
+            border-color: #b0a89b;
+        }
+        .admin-only {
+            display: none;
+        }
+        .admin-only.visible {
+            display: block;
+        }
+        .admin-panel {
+            background: #f9f965;
+            border: 1px solid var(--border);
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            border-radius: var(--radius-sm);
+        }
+        .admin-panel h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.2rem;
+            color: #333;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.2rem;
+        }
+        label {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            padding: 1rem 1.2rem;
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: vertical;
+            min-height: 120px;
+            background: #ffffa3;
+            transition: border var(--transition);
+            font-family: inherit;
+            border-radius: var(--radius-sm);
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(196, 32, 58, 0.08);
+        }
+        .file-area {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+        }
+        .custom-file-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #ffffa3;
+            border: 1px dashed #bbb;
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            width: fit-content;
+            color: #333;
+            font-size: 0.9rem;
+            border-radius: var(--radius-sm);
+        }
+        .custom-file-label:hover {
+            border-color: var(--primary);
+            background: #fdf2f4;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+        .preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            overflow: hidden;
+            background: #f5f2ec;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .remove-preview {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            width: 22px;
+            height: 22px;
+            font-size: 13px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 0;
+            border-radius: var(--radius-sm);
+        }
+        .remove-preview:hover {
+            background: var(--primary);
+        }
+        .button-primary {
+            background: var(--primary);
+            color: #fff;
+            border: 2px solid var(--primary);
+            padding: 0.9rem 2rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.4px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            text-transform: uppercase;
+            border-radius: var(--radius-sm);
+        }
+        .button-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        .button-primary:active {
+            transform: scale(0.99);
+        }
+        .button-primary:disabled {
+            background: #bbb;
+            border-color: #bbb;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .card {
+            background: #fff;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+            position: relative;
+            border-radius: var(--radius-sm);
+        }
+        .card:hover {
+            border-color: #c0b8aa;
+        }
+        .card-text {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+        .timestamp {
+            font-size: 0.75rem;
+            color: #777;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .empty-message {
+            text-align: center;
+            color: #888;
+            padding: 3rem;
+            font-style: italic;
+            background: #ffffa3;
+            border: 1px dashed #dcd5cb;
+            border-radius: var(--radius-sm);
+        }
+        .status-message {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            padding: 0.4rem 1rem;
+            display: inline-block;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        hr {
+            margin: 1.8rem 0 1rem;
+            border: 0.5px solid var(--border);
+        }
+        .post-menu-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            line-height: 1;
+            color: #666;
+            border-radius: var(--radius-sm);
+            transition: background var(--transition);
+            z-index: 10;
+        }
+        .post-menu-btn:hover {
+            background: #f0f0f0;
+        }
+        .post-dropdown {
+            display: none;
+            position: absolute;
+            top: 38px;
+            right: 10px;
+            background: white;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            z-index: 20;
+            min-width: 160px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .post-dropdown.show {
+            display: block;
+        }
+        .post-dropdown button {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            text-align: left;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background var(--transition);
+            border-radius: 0;
+        }
+        .post-dropdown button:hover {
+            background: #fdf2f4;
+        }
+        .post-dropdown button.delete-btn {
+            color: var(--primary);
+        }
+        .profile-status {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 20%;
+            border: 2px solid var(--border);
+            background: #f0ece4;
+            margin-bottom: 1rem;
+            display: block;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .profile-info-block {
+            background: #ffffa3;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            margin: 1rem 0;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .profile-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .profile-nick {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #0f0f0f;
+        }
+        .profile-email {
+            font-size: 1.2rem;
+            color: #666;
+        }
+        .profile-name {
+            font-size: 1rem;
+            color: #333;
+            font-weight: 600;
+        }
+        .admin-login-block {
+            background: #fafaf8;
+            border: 1px solid var(--border);
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            border-radius: var(--radius-sm);
+        }
+        .admin-login-block.visible {
+            display: block;
+            animation: fadeSlide 0.3s ease;
+        }
+        .password-input {
+            width: 100%;
+            border: 1px solid var(--border);
+            padding: 0.9rem 1.2rem;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(196, 32, 58, 0.08);
+        }
+        .btn-group {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .btn-secondary {
+            background: #fff;
+            border: 2px solid #ccc;
+            padding: 0.7rem 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-size: 0.85rem;
+            border-radius: var(--radius-sm);
+        }
+        .btn-secondary:hover {
+            background: #eee;
+            border-color: #aaa;
+        }
+        .btn-cancel {
+            background: #fff;
+            border: 2px solid #ccc;
+            padding: 0.7rem 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-size: 0.85rem;
+            border-radius: var(--radius-sm);
+            color: #555;
+        }
+        .btn-cancel:hover {
+            background: #f5f5f5;
+            border-color: #aaa;
+        }
+
+        /* ===== СЕТКА ИЗОБРАЖЕНИЙ В ПОСТАХ ===== */
+        .post-images-grid {
+            display: grid;
+            gap: 3px;
+            margin-top: 0.8rem;
+            border-radius: 0;
+            overflow: hidden;
+        }
+        .post-images-grid.img-count-1 {
+            grid-template-columns: 1fr;
+        }
+        .post-images-grid.img-count-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+        .post-images-grid.img-count-3 {
+            grid-template-columns: 1.3fr 0.7fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        .post-images-grid.img-count-3 .grid-img-0 {
+            grid-row: 1 / span 2;
+        }
+        .post-images-grid.img-count-4 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        .post-images-grid.img-count-more {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        .post-images-grid .grid-img-item {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            display: block;
+            border-radius: 0 !important;
+            min-height: 120px;
+            background: #e8e0d5;
+            transition: opacity 0.2s ease;
+        }
+        .post-images-grid .grid-img-item:hover {
+            opacity: 0.9;
+        }
+        .post-images-grid.img-count-1 .grid-img-item {
+            max-height: 500px;
+            min-height: 200px;
+        }
+        .post-images-grid.img-count-3 .grid-img-item {
+            min-height: 100px;
+        }
+        .grid-more-overlay {
+            position: relative;
+            cursor: pointer;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+        }
+        .grid-more-overlay img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.5;
+            border-radius: 0 !important;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .grid-more-text {
+            position: relative;
+            z-index: 2;
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* ===== IMAGE VIEWER MODAL ===== */
+        .image-viewer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        .image-viewer-overlay.hidden {
+            display: none;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .image-viewer-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-viewer-img {
+            max-width: 90vw;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 0;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .image-viewer-close {
+            position: absolute;
+            top: 16px;
+            right: 24px;
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            border-radius: 50%;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+        .image-viewer-close:hover {
+            background: rgba(0, 0, 0, 0.85);
+        }
+        .image-viewer-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: #fff;
+            font-size: 2.5rem;
+            cursor: pointer;
+            width: 50px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            border-radius: 4px;
+            transition: background 0.2s;
+            line-height: 1;
+            user-select: none;
+        }
+        .image-viewer-nav:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .image-viewer-nav.prev {
+            left: 16px;
+        }
+        .image-viewer-nav.next {
+            right: 16px;
+        }
+        .image-viewer-nav.hidden-nav {
+            display: none;
+        }
+        .image-viewer-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ccc;
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            z-index: 10001;
+        }
+
+        /* ===== МОДАЛЬНОЕ ОКНО АККАУНТА ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
+        }
+        .modal-overlay.hidden {
+            display: none;
+        }
+        .modal-dialog {
+            background: #fff;
+            width: 480px;
+            max-width: 94vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem 2rem 1.8rem;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #888;
+            line-height: 1;
+            transition: color var(--transition);
+            padding: 0;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        .modal-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.8rem;
+            border-bottom: 2px solid #e8e3d8;
+        }
+        .modal-tab {
+            flex: 1;
+            text-align: center;
+            padding: 0.8rem 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all var(--transition);
+            color: #888;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .modal-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .modal-form {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .modal-form.active {
+            display: flex;
+        }
+        .modal-form .form-group {
+            margin-bottom: 0;
+        }
+        .modal-form input[type="text"],
+        .modal-form input[type="email"],
+        .modal-form input[type="password"] {
+            width: 100%;
+            border: 1px solid var(--border);
+            padding: 0.85rem 1rem;
+            font-size: 0.95rem;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            transition: border var(--transition);
+            background: #fff;
+        }
+        .modal-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(196, 32, 58, 0.08);
+        }
+        .password-wrapper {
+            position: relative;
+        }
+        .password-wrapper input {
+            padding-right: 45px !important;
+        }
+        .toggle-password-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 6px 8px;
+            color: #777;
+            transition: color var(--transition);
+            line-height: 1;
+        }
+        .toggle-password-btn:hover {
+            color: #333;
+        }
+        .avatar-upload-area {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 20%;
+            border: 2px solid var(--border);
+            background: #f0ece4;
+            flex-shrink: 0;
+        }
+        .avatar-upload-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color var(--transition);
+        }
+        .avatar-upload-label:hover {
+            color: var(--primary-hover);
+        }
+        .modal-forgot-link {
+            font-size: 0.85rem;
+            color: var(--primary);
+            cursor: pointer;
+            text-align: right;
+            font-weight: 600;
+            margin-top: -0.3rem;
+            transition: color var(--transition);
+        }
+        .modal-forgot-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+        .forgot-password-block {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .forgot-password-block.active {
+            display: flex;
+        }
+        .modal-msg {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            min-height: 1.2rem;
+        }
+        .modal-msg.success {
+            color: #2d6a4f;
+        }
+        .modal-msg.error {
+            color: #c4203a;
+        }
+
+        /* Редактирование профиля */
+        .edit-profile-block {
+            display: none;
+            background: #fafaf8;
+            border: 1px solid var(--border);
+            padding: 1.8rem;
+            margin-top: 1.2rem;
+            border-radius: var(--radius-sm);
+            animation: fadeSlide 0.3s ease;
+        }
+        .edit-profile-block.visible {
+            display: block;
+        }
+        .profile-section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+            color: #333;
+            border-bottom: 2px solid #e8e3d8;
+            padding-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .creator-photo-wrapper {
+                max-width: 280px;
+                aspect-ratio: 3/4;
+                margin: 0 auto;
+            }
+            .greeting,
+            .creator-name {
+                font-size: 2rem;
+            }
+            .main-content {
+                padding: 1.2rem;
+            }
+            .section-card {
+                padding: 1.5rem;
+            }
+            .nav-btn {
+                padding: 0 0.8rem;
+                font-size: 0.8rem;
+            }
+            .navbar {
+                padding: 0 1rem;
+            }
+            .static-gallery img {
+                width: 80px;
+                height: 80px;
+            }
+            .modal-dialog {
+                padding: 1.5rem 1.2rem 1.4rem;
+            }
+            .image-viewer-nav {
+                width: 36px;
+                height: 50px;
+                font-size: 1.8rem;
+            }
+            .image-viewer-close {
+                top: 8px;
+                right: 10px;
+                width: 36px;
+                height: 36px;
+                font-size: 1.5rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .hero-grid {
+                gap: 1.5rem;
+            }
+            .creator-photo-wrapper {
+                max-width: 200px;
+            }
+            .greeting,
+            .creator-name {
+                font-size: 1.6rem;
+            }
+            .description {
+                font-size: 0.95rem;
+                padding: 1rem;
+            }
+            .nav-links {
+                gap: 0;
+            }
+            .nav-btn {
+                padding: 0 0.5rem;
+                font-size: 0.75rem;
+            }
+            .modal-dialog {
+                padding: 1.2rem 0.8rem 1rem;
+            }
+            .modal-tab {
+                font-size: 0.85rem;
+                padding: 0.6rem 0.3rem;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="app-wrapper">
+        <nav class="navbar">
+            <div class="logo">ВАСТА</div>
+            <!-- ===== КНОПКА УСТАНОВКИ PWA (справа от названия) ===== -->
+            <button id="installPWAButton" title="Установить приложение">📲 Установить</button>
+            <div class="nav-links">
+                <button class="nav-btn active" data-target="home-section">Главная</button>
+                <button class="nav-btn" data-target="vasta-section">Васту</button>
+                <button class="nav-btn" data-target="esoterica-section">Изотерика</button>
+                <button class="nav-btn" data-target="astrology-section">Астрология</button>
+                <button class="nav-btn" data-target="profile-section">Профиль</button>
+            </div>
+        </nav>
 
-  <!-- ПРИВЕТСТВИЕ -->
-  <div id="welcomeScreen" class="welcome-screen">
-    <div class="logo">⚔️</div>
-    <h1>3D Brawl Arena</h1>
-    <p id="welcomeMessage">Загрузка...</p>
-    <button id="installBtn" class="install-btn" onclick="installApp()">📲 Установить игру</button>
-    <button id="playBrowserBtn" class="play-browser-btn" onclick="startBrowserGame()">🎮 Играть в браузере</button>
-  </div>
+        <div class="main-content">
+            <!-- Главная страница -->
+            <section class="section-card" id="home-section">
+                <div class="hero-grid">
+                    <div class="creator-photo-wrapper" id="heroPhotoWrapper">
+                        <img src="https://i.oneme.ru/i?r=BTE2sh_eZW7g8kugOdIm2NotGNKULMo6URAl2Lf1413A5Wq0x2OFx_8_0o1o_RmY7zE" alt="Екатерина Момот" class="creator-photo" loading="lazy">
+                    </div>
+                    <div class="hero-info">
+                        <h1 class="greeting">
+                            <span class="creator-name">Я — <span class="highlight">Екатерина Момот</span></span>
+                        </h1>
+                        <p class="description">
+                            Это пространство, где делятся важными объявлениями, вдохновляющими
+                            историями и светлыми новостями.<br><br>
+                            Васту — место силы, гармонии и добрых вестей. Оставайтесь на связи и
+                            читайте публикации.
+                        </p>
+                    </div>
+                </div>
+            </section>
 
-  <!-- ЭКРАН ВВОДА НИКА -->
-  <div id="nicknameScreen" class="nickname-screen">
-    <h2>🎮 Добро пожаловать!</h2>
-    <p>Введите ваш никнейм</p>
-    <input type="text" id="nicknameInput" class="nickname-input" placeholder="Ваш ник" maxlength="20">
-    <button class="confirm-btn" onclick="saveNickname()">Продолжить</button>
-  </div>
+            <!-- Васту -->
+            <section class="section-card hidden-section" id="vasta-section">
+                <div class="section-header"><h2>Васту</h2><span class="section-badge">Гармония пространства</span></div>
+                <div class="static-description">Васту-шастра — древнее учение о гармоничной организации жилого пространства. Следуя принципам Васту, можно привлечь в дом здоровье, процветание и радость.</div>
+                
+                <div class="admin-only" id="vasta-admin-form">
+                    <div class="admin-panel">
+                        <h3 id="vastaFormTitle">Добавить публикацию</h3>
+                        <input type="hidden" id="vastaEditingId">
+                        <div class="form-group"><label>Текст</label><textarea id="vastaTextInput" placeholder="Опишите, что вы хотите сообщить..."></textarea></div>
+                        <div class="file-area"><label>Фотографии</label><label for="vastaFileInput" class="custom-file-label">Выбрать из галереи</label><input type="file" id="vastaFileInput" accept="image/*" multiple><div id="vastaPreviewContainer" class="preview-grid"></div></div>
+                        <div style="display:flex;gap:0.8rem;">
+                            <button id="vastaSubmitBtn" class="button-primary" style="flex:1;">Опубликовать</button>
+                            <button id="vastaCancelBtn" class="btn-cancel" style="display:none;">Отмена</button>
+                        </div>
+                        <div id="vastaUploadStatus" class="status-message"></div>
+                    </div>
+                    <hr>
+                </div>
+                <div id="vastaPostsContainer"><div class="empty-message">Загрузка публикаций...</div></div>
+            </section>
 
-  <!-- ЛОББИ -->
-  <div id="lobbyScreen" class="lobby-screen">
-    <div class="lobby-top-bar">
-      <div class="lobby-profile" id="lobbyProfile">👤</div>
-      <div class="lobby-rect"></div>
-      <button class="login-btn" onclick="showLogin()">Войти</button>
-    </div>
-    
-    <div class="collection-btn" onclick="openCollection()">📦</div>
-    
-    <div class="lobby-bottom-buttons">
-      <button class="mode-select-btn" onclick="openModes()" title="Выбор режима">🎯</button>
-      <button class="play-lobby-btn" onclick="startGame()">ИГРАТЬ</button>
-    </div>
-  </div>
+            <!-- Изотерика -->
+            <section class="section-card hidden-section" id="esoterica-section">
+                <div class="section-header"><h2>Изотерика</h2><span class="section-badge">Скрытые знания</span></div>
+                <div class="static-description">Изотерика изучает скрытые законы мироздания, энергию и символизм.</div>
+                
+                <div class="admin-only" id="esoterica-admin-form">
+                    <div class="admin-panel">
+                        <h3 id="esotericaFormTitle">Добавить публикацию</h3>
+                        <input type="hidden" id="esotericaEditingId">
+                        <div class="form-group"><label>Текст</label><textarea id="esotericaTextInput" placeholder="напишите текст или выберете изображение"></textarea></div>
+                        <div class="file-area"><label>Фотографии</label><label for="esotericaFileInput" class="custom-file-label">Выбрать из галереи</label><input type="file" id="esotericaFileInput" accept="image/*" multiple><div id="esotericaPreviewContainer" class="preview-grid"></div></div>
+                        <div style="display:flex;gap:0.8rem;">
+                            <button id="esotericaSubmitBtn" class="button-primary" style="flex:1;">Опубликовать</button>
+                            <button id="esotericaCancelBtn" class="btn-cancel" style="display:none;">Отмена</button>
+                        </div>
+                        <div id="esotericaUploadStatus" class="status-message"></div>
+                    </div>
+                    <hr>
+                </div>
+                <div id="esotericaPostsContainer"><div class="empty-message">Загрузка публикаций...</div></div>
+            </section>
 
-  <!-- ВЫБОР РЕЖИМА -->
-  <div id="modesOverlay" class="modes-overlay">
-    <div class="collection-header">
-      <h2>Выбор режима</h2>
-      <button class="close-btn" onclick="closeModes()">✕</button>
-    </div>
-    <div class="modes-scroll-container" id="modesScrollContainer"></div>
-    <button class="save-btn" onclick="openCreateMode()" style="width: auto; margin: 10px auto; display: block;">+ Создать режим (код)</button>
-  </div>
+            <!-- Астрология -->
+            <section class="section-card hidden-section" id="astrology-section">
+                <div class="section-header"><h2>Астрология</h2><span class="section-badge">Влияние планет</span></div>
+                <div class="static-description">Астрология помогает понять влияние планет на нашу жизнь.</div>
+                
+                <div class="admin-only" id="astrology-admin-form">
+                    <div class="admin-panel">
+                        <h3 id="astrologyFormTitle">Добавить публикацию</h3>
+                        <input type="hidden" id="astrologyEditingId">
+                        <div class="form-group"><label>Текст</label><textarea id="astrologyTextInput" placeholder="Астрологическое наблюдение..."></textarea></div>
+                        <div class="file-area"><label>Фотографии</label><label for="astrologyFileInput" class="custom-file-label">Выбрать из галереи</label><input type="file" id="astrologyFileInput" accept="image/*" multiple><div id="astrologyPreviewContainer" class="preview-grid"></div></div>
+                        <div style="display:flex;gap:0.8rem;">
+                            <button id="astrologySubmitBtn" class="button-primary" style="flex:1;">Опубликовать</button>
+                            <button id="astrologyCancelBtn" class="btn-cancel" style="display:none;">Отмена</button>
+                        </div>
+                        <div id="astrologyUploadStatus" class="status-message"></div>
+                    </div>
+                    <hr>
+                </div>
+                <div id="astrologyPostsContainer"><div class="empty-message">Загрузка публикаций...</div></div>
+            </section>
 
-  <!-- СОЗДАНИЕ РЕЖИМА -->
-  <div id="createModeScreen" class="create-screen">
-    <div class="collection-header">
-      <h2>Создание режима</h2>
-      <button class="close-btn" onclick="closeCreateMode()">✕</button>
-    </div>
-    <div class="create-form">
-      <div class="form-group">
-        <label>Название режима</label>
-        <input type="text" id="modeName" placeholder="Например: Захват флага">
-      </div>
-      <div class="form-group">
-        <label>Инициализация режима (код)</label>
-        <textarea id="modeInit" class="code-editor" placeholder="function init(scene, player, enemies, bullets) {...}"></textarea>
-        <small style="color: #888;">Вызывается при старте игры</small>
-      </div>
-      <div class="form-group">
-        <label>Игровой цикл режима (код)</label>
-        <textarea id="modeLoop" class="code-editor" placeholder="function loop(scene, player, enemies, bullets, delta) {...}"></textarea>
-        <small style="color: #888;">Вызывается каждый кадр</small>
-      </div>
-      <div class="form-group">
-        <label>Условие победы (код)</label>
-        <textarea id="modeWinCondition" class="code-editor" placeholder="function checkWin(player, enemies, score) { return score >= 30; }"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Настройки режима (JSON)</label>
-        <textarea id="modeSettings" class="code-editor" style="min-height: 80px;">{
-  "timeLimit": 120,
-  "enemyCount": 4,
-  "mapSize": 80
-}</textarea>
-      </div>
-      <button class="save-btn" onclick="saveMode()">Сохранить режим</button>
-    </div>
-  </div>
+            <!-- Профиль -->
+            <section class="section-card hidden-section" id="profile-section">
+                <h2 style="font-size:2rem;font-weight:800;text-transform:uppercase;letter-spacing:-0.5px;margin-bottom:1rem;">Профиль</h2>
 
-  <!-- КОЛЛЕКЦИЯ ПЕРСОНАЖЕЙ -->
-  <div id="collectionOverlay" class="collection-overlay">
-    <div class="collection-header">
-      <h2>Коллекция бойцов</h2>
-      <button class="close-btn" onclick="closeCollection()">✕</button>
-    </div>
-    <div class="characters-grid" id="charactersGrid"></div>
-    <button class="save-btn" onclick="openCreateCharacter()" style="margin-top: 15px;">+ Создать бойца (код)</button>
-  </div>
+                <!-- Раздел: Аккаунт -->
+                <div class="profile-section-title">Аккаунт</div>
+                <div id="accountBlock">
+                    <div id="loggedOutBlock">
+                        <p style="margin-bottom:1rem;color:#555;">У вас есть аккаунт? Войдите или создайте новый.</p>
+                        <button class="action-btn secondary" id="openAuthModalBtn" style="border-radius:5px;">Зарегистрироваться / Войти</button>
+                    </div>
+                    <div id="loggedInBlock" style="display:none;">
+                        <div class="profile-info-block">
+                            <img id="profileAvatarImg" class="profile-avatar" src="" alt="Аватар" style="display:none;">
+                            <div class="profile-info-text">
+                                <span class="profile-nick" id="profileNickDisplay"></span>
+                                <span class="profile-name" id="profileNameDisplay"></span>
+                                <span class="profile-email" id="profileEmailDisplay"></span>
+                            </div>
+                        </div>
+                        <button class="action-btn secondary" id="editProfileBtn" style="border-radius:5px;margin-right:0.5rem;">Редактировать профиль</button>
+                        <button class="action-btn secondary" id="logoutBtn" style="border-radius:5px;">Выйти из аккаунта</button>
 
-  <!-- СОЗДАНИЕ ПЕРСОНАЖА -->
-  <div id="createCharacterScreen" class="create-screen">
-    <div class="collection-header">
-      <h2>Создание бойца</h2>
-      <button class="close-btn" onclick="closeCreateCharacter()">✕</button>
-    </div>
-    <div class="create-form">
-      <div class="form-group">
-        <label>Имя бойца</label>
-        <input type="text" id="charName" placeholder="Введите имя">
-      </div>
-      
-      <div class="form-group">
-        <label>3D Модель (JavaScript - возвращает THREE.Group)</label>
-        <textarea id="charModel" class="code-editor" placeholder="function createModel(scene, THREE, color) {
-  const group = new THREE.Group();
-  // Создайте любую 3D модель
-  return group;
-}"></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Основная атака (JavaScript)</label>
-        <textarea id="charAttack" class="code-editor" placeholder="function attack(player, enemies, bullets, scene, THREE, angle) {
-  // Любая логика атаки
-}"></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Супер-атака (JavaScript)</label>
-        <textarea id="charSuper" class="code-editor" placeholder="function superAttack(player, enemies, bullets, scene, THREE) {
-  // Мощная способность
-}"></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Пассивная способность (JavaScript)</label>
-        <textarea id="charPassive" class="code-editor" placeholder="function passive(player, enemies, scene) {
-  // Работает постоянно
-}"></textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Базовые характеристики (JSON)</label>
-        <textarea id="charStats" class="code-editor" style="min-height: 80px;">{
-  "hp": 100,
-  "speed": 0.15,
-  "reloadSpeed": 10,
-  "superChargeRate": 0.5,
-  "color": "#4488ff"
-}</textarea>
-      </div>
-      
-      <button class="save-btn" onclick="saveCharacter()">Сохранить бойца</button>
-    </div>
-  </div>
+                        <!-- Форма редактирования профиля -->
+                        <div class="edit-profile-block" id="editProfileBlock">
+                            <h3 style="font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:1rem;">Редактирование данных</h3>
+                            <div class="form-group avatar-upload-area">
+                                <img id="editAvatarPreview" class="avatar-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e8e0d5' width='100' height='100'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23999' font-size='14'%3Eфото%3C/text%3E%3C/svg%3E" alt="Аватар">
+                                <label for="editAvatarInput" class="avatar-upload-label">Загрузить новый аватар</label>
+                                <input type="file" id="editAvatarInput" accept="image/*" style="display:none;">
+                            </div>
+                            <div class="form-group"><label>Ник *</label><input type="text" id="editNick" placeholder="Ваш уникальный ник" required></div>
+                            <div class="form-group"><label>Имя</label><input type="text" id="editFirstName" placeholder="Имя (необязательно)"></div>
+                            <div class="form-group"><label>Фамилия</label><input type="text" id="editLastName" placeholder="Фамилия (необязательно)"></div>
+                            <div class="form-group"><label>Email</label><input type="email" id="editEmail" placeholder="your@email.com"></div>
+                            <hr style="margin:0.5rem 0;">
+                            <p style="font-weight:700;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:0.5rem;">Смена пароля (необязательно)</p>
+                            <div class="form-group"><label>Текущий пароль</label><div class="password-wrapper"><input type="password" id="editOldPassword" placeholder="Текущий пароль"><button type="button" class="toggle-password-btn" data-target="editOldPassword,editNewPassword1,editNewPassword2" title="Показать пароли">👁</button></div></div>
+                            <div class="form-group"><label>Новый пароль</label><input type="password" id="editNewPassword1" placeholder="Новый пароль"></div>
+                            <div class="form-group"><label>Повторите новый пароль</label><input type="password" id="editNewPassword2" placeholder="Повторите новый пароль"></div>
+                            <div style="display:flex;gap:0.8rem;">
+                                <button class="button-primary" id="saveProfileBtn" style="flex:1;">Сохранить изменения</button>
+                                <button class="btn-cancel" id="cancelEditProfileBtn">Отмена</button>
+                            </div>
+                            <div class="modal-msg" id="editProfileMsg"></div>
+                        </div>
+                    </div>
+                </div>
 
-  <!-- ИГРА -->
-  <div id="gameContainer">
-    <div class="game-ui" id="gameUI">
-      <div class="ui-top">
-        <div class="hp-bar"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
-        <div class="timer" id="timer">2:00</div>
-        <div class="score" id="scoreDisplay">🏆 0</div>
-      </div>
-      
-      <div class="joystick" id="moveJoystick">
-        <div class="joystick-base" id="moveBase">
-          <div class="joystick-thumb" id="moveThumb"></div>
+                <hr style="margin:2rem 0 1.5rem;">
+
+                <!-- Раздел: Статус -->
+                <div class="profile-section-title">Статус</div>
+                <div class="profile-status" id="profileStatus">Пользователь</div>
+                <button class="action-btn secondary" id="showAdminLoginBtn" style="border-radius:5px;">Войти как администратор</button>
+                <div id="adminPasswordBlock" class="admin-login-block">
+                    <label for="adminPasswordInput" style="display:block;margin-bottom:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Введите пароль администратора</label>
+                    <input type="password" id="adminPasswordInput" class="password-input" placeholder="Пароль">
+                    <div class="btn-group">
+                        <button id="cancelAdminLoginBtn" class="btn-secondary">Отмена</button>
+                        <button id="confirmAdminLoginBtn" class="button-primary" style="width:auto;margin-top:0;">Подтвердить</button>
+                    </div>
+                    <div id="adminLoginMessage" class="status-message" style="margin-top:0.8rem;"></div>
+                </div>
+            </section>
         </div>
-      </div>
-      
-      <div class="joystick" id="attackJoystick">
-        <div class="joystick-base" id="attackBase">
-          <div class="joystick-thumb" id="attackThumb"></div>
+    </div>
+
+    <!-- Модальное окно аккаунта -->
+    <div class="modal-overlay hidden" id="authModalOverlay">
+        <div class="modal-dialog">
+            <button class="modal-close" id="authModalClose">&times;</button>
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-tab="loginTab">Войти</button>
+                <button class="modal-tab" data-tab="registerTab">Зарегистрироваться</button>
+            </div>
+            <form class="modal-form active" id="loginForm" autocomplete="off">
+                <div class="form-group"><label>Ник</label><input type="text" id="loginNick" placeholder="Ваш уникальный ник" required></div>
+                <div class="form-group"><label>Пароль</label><div class="password-wrapper"><input type="password" id="loginPassword" placeholder="Пароль" required><button type="button" class="toggle-password-btn" data-target="loginPassword" title="Показать пароль">👁</button></div></div>
+                <span class="modal-forgot-link" id="forgotPasswordLink">Забыли пароль?</span>
+                <button type="submit" class="button-primary">Войти</button>
+                <div class="modal-msg" id="loginMsg"></div>
+            </form>
+            <form class="modal-form" id="registerForm" autocomplete="off">
+                <div class="form-group avatar-upload-area">
+                    <img id="registerAvatarPreview" class="avatar-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e8e0d5' width='100' height='100'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23999' font-size='14'%3Eфото%3C/text%3E%3C/svg%3E" alt="Аватар">
+                    <label for="registerAvatarInput" class="avatar-upload-label">Загрузить аватар (необязательно)</label>
+                    <input type="file" id="registerAvatarInput" accept="image/*" style="display:none;">
+                </div>
+                <div class="form-group"><label>Уникальный ник *</label><input type="text" id="registerNick" placeholder="Придумайте ник" required></div>
+                <div class="form-group"><label>Имя</label><input type="text" id="registerFirstName" placeholder="Имя (необязательно)"></div>
+                <div class="form-group"><label>Фамилия</label><input type="text" id="registerLastName" placeholder="Фамилия (необязательно)"></div>
+                <div class="form-group"><label>Email (желательно для восстановления пароля)</label><input type="email" id="registerEmail" placeholder="your@email.com"></div>
+                <div class="form-group"><label>Пароль *</label><div class="password-wrapper"><input type="password" id="registerPassword1" placeholder="Придумайте пароль" required><button type="button" class="toggle-password-btn" data-target="registerPassword1,registerPassword2" title="Показать пароли">👁</button></div></div>
+                <div class="form-group"><label>Повторите пароль *</label><div class="password-wrapper"><input type="password" id="registerPassword2" placeholder="Повторите пароль" required></div></div>
+                <button type="submit" class="button-primary">Зарегистрироваться</button>
+                <div class="modal-msg" id="registerMsg"></div>
+            </form>
+            <div class="forgot-password-block" id="forgotPasswordBlock">
+                <p style="font-weight:700;margin-bottom:0.5rem;">Восстановление пароля</p>
+                <p style="font-size:0.85rem;color:#666;">Укажите email, привязанный к аккаунту. Мы отправим ссылку для сброса пароля.</p>
+                <div class="form-group"><label>Email</label><input type="email" id="forgotEmail" placeholder="your@email.com" required></div>
+                <button class="button-primary" id="sendResetBtn">Отправить ссылку</button>
+                <button class="btn-secondary" id="backToLoginBtn" style="width:100%;margin-top:0.5rem;">← Назад ко входу</button>
+                <div class="modal-msg" id="forgotMsg"></div>
+            </div>
         </div>
-      </div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div class="image-viewer-overlay hidden" id="imageViewerOverlay">
+        <button class="image-viewer-close" id="imageViewerClose">&times;</button>
+        <button class="image-viewer-nav prev hidden-nav" id="imageViewerPrev">&#8249;</button>
+        <button class="image-viewer-nav next hidden-nav" id="imageViewerNext">&#8250;</button>
+        <div class="image-viewer-content">
+            <img class="image-viewer-img" id="imageViewerImg" src="" alt="Просмотр изображения">
+        </div>
+        <div class="image-viewer-counter hidden-nav" id="imageViewerCounter"></div>
     </div>
     
-    <div class="game-over" id="gameOver">
-      <h2 id="gameOverTitle">Победа!</h2>
-      <div class="final-score" id="gameOverScore">🏆 0</div>
-      <button onclick="restartGame()">Играть снова</button>
-    </div>
-  </div>
+    <script>
+        (function() {
+            const firebaseConfig = {
+                apiKey: "AIzaSyA0FYjnMg30jS9D2jeJ-EVTKt5_UU5PfCw",
+                authDomain: "messenger-c75f6.firebaseapp.com",
+                databaseURL: "https://messenger-c75f6-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "messenger-c75f6",
+                storageBucket: "messenger-c75f6.firebasestorage.app",
+                messagingSenderId: "936523368636",
+                appId: "1:936523368636:web:892c52268bfd02674068b9",
+                measurementId: "G-JB4S4V0X0Y"
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const vastaCollection = db.collection("vasta");
+            const esotericaCollection = db.collection("esoterica");
+            const astrologyCollection = db.collection("astrology");
+            const usersCollection = db.collection("users");
 
-  <script>
-    // ========== ДАННЫЕ ==========
-    let gameModes = [
-      {
-        id: 'default',
-        name: 'Арена',
-        settings: { timeLimit: 120, enemyCount: 4, mapSize: 80 },
-        initCode: 'function init(scene, player, enemies, bullets) { /* Стандартная арена */ }',
-        loopCode: 'function loop(scene, player, enemies, bullets, delta) { /* Базовый цикл */ }',
-        winCode: 'function checkWin(player, enemies, score) { return score >= 30; }'
-      }
-    ];
-    
-    let characters = [
-      {
-        id: 'default',
-        name: 'Боец',
-        stats: { hp: 100, speed: 0.15, reloadSpeed: 10, superChargeRate: 0.5, color: '#4488ff' },
-        modelCode: `function createModel(scene, THREE, color) {
-          const group = new THREE.Group();
-          const bodyGeo = new THREE.CylinderGeometry(1, 1.2, 2, 8);
-          const body = new THREE.Mesh(bodyGeo, new THREE.MeshLambertMaterial({ color }));
-          body.position.y = 1; body.castShadow = true; group.add(body);
-          const headGeo = new THREE.SphereGeometry(0.7, 8, 8);
-          const head = new THREE.Mesh(headGeo, new THREE.MeshLambertMaterial({ color: 0xffdbac }));
-          head.position.y = 2.4; group.add(head);
-          return group;
-        }`,
-        attackCode: `function attack(player, enemies, bullets, scene, THREE, angle) {
-          const bulletGeo = new THREE.SphereGeometry(0.3, 6, 6);
-          const bullet = new THREE.Mesh(bulletGeo, new THREE.MeshLambertMaterial({ color: 0xffd93d }));
-          bullet.position.set(player.position.x + Math.cos(angle)*2, 1.5, player.position.z + Math.sin(angle)*2);
-          bullet.userData = { vx: Math.cos(angle)*0.6, vz: Math.sin(angle)*0.6, life: 60, damage: 20 };
-          scene.add(bullet); bullets.push(bullet);
-        }`,
-        superCode: `function superAttack(player, enemies, bullets, scene, THREE) {
-          for(let i=0; i<8; i++) {
-            const angle = (i/8)*Math.PI*2;
-            const b = new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6), new THREE.MeshLambertMaterial({color:0xff4444}));
-            b.position.copy(player.position); b.position.y = 1.5;
-            b.userData = { vx: Math.cos(angle)*0.5, vz: Math.sin(angle)*0.5, life: 40, damage: 30 };
-            scene.add(b); bullets.push(b);
-          }
-        }`,
-        passiveCode: 'function passive(player, enemies, scene) {}'
-      }
-    ];
-    
-    let selectedCharacter = characters[0];
-    let selectedMode = gameModes[0];
-    let playerNickname = '';
+            (function initEmailJS() {
+                if (typeof emailjs !== 'undefined') {
+                    emailjs.init("YOUR_EMAILJS_PUBLIC_KEY");
+                }
+            })();
 
-    // ========== ЗАГРУЗКА/СОХРАНЕНИЕ ==========
-    function loadData() {
-      const savedModes = localStorage.getItem('brawlModes');
-      const savedChars = localStorage.getItem('brawlCharacters');
-      if (savedModes) try { gameModes = JSON.parse(savedModes); } catch(e) {}
-      if (savedChars) try { characters = JSON.parse(savedChars); } catch(e) {}
-    }
+            // ============ СОСТОЯНИЕ (localStorage для сохранения между сессиями) ============
+            let isAdmin = localStorage.getItem('vastaIsAdmin') === 'true';
+            let currentUser = null;
+            try {
+                const stored = localStorage.getItem('vastaCurrentUser');
+                if (stored) currentUser = JSON.parse(stored);
+            } catch (e) { currentUser = null; }
 
-    function saveAllData() {
-      localStorage.setItem('brawlModes', JSON.stringify(gameModes));
-      localStorage.setItem('brawlCharacters', JSON.stringify(characters));
-    }
+            const ADMIN_NICKS = ['Катрин', 'katrin', 'Екатерина', 'ekaterina'];
 
-    // ========== РЕЖИМЫ ==========
-    function openModes() {
-      const container = document.getElementById('modesScrollContainer');
-      container.innerHTML = '';
-      
-      // Создаем колонки по 2 режима
-      const modesPerColumn = 2;
-      const columnsCount = Math.ceil(gameModes.length / modesPerColumn);
-      
-      for (let col = 0; col < columnsCount; col++) {
-        const column = document.createElement('div');
-        column.className = 'modes-column';
-        
-        for (let row = 0; row < modesPerColumn; row++) {
-          const index = col * modesPerColumn + row;
-          if (index >= gameModes.length) break;
-          
-          const mode = gameModes[index];
-          const card = document.createElement('div');
-          card.className = 'mode-card';
-          card.onclick = () => selectMode(mode);
-          
-          card.innerHTML = `
-            <div class="mode-icon">${getModeIcon(mode.name)}</div>
-            <div class="mode-name">${mode.name}</div>
-            <small style="opacity:0.6;margin-top:5px;">⏱ ${mode.settings.timeLimit}с | 👥 ${mode.settings.enemyCount}</small>
-          `;
-          
-          if (mode.id === selectedMode.id) card.classList.add('selected');
-          column.appendChild(card);
-        }
-        
-        container.appendChild(column);
-      }
-      
-      document.getElementById('modesOverlay').style.display = 'block';
-    }
-
-    function getModeIcon(name) {
-      if (name.includes('Захват')) return '🚩';
-      if (name.includes('Выживание')) return '💀';
-      if (name.includes('Босс')) return '👾';
-      if (name.includes('Гонка')) return '🏁';
-      return '⚔️';
-    }
-
-    function selectMode(mode) {
-      selectedMode = mode;
-      document.querySelectorAll('.mode-card').forEach(card => {
-        card.classList.remove('selected');
-        if (card.querySelector('.mode-name').textContent === mode.name) {
-          card.classList.add('selected');
-        }
-      });
-    }
-
-    function closeModes() {
-      document.getElementById('modesOverlay').style.display = 'none';
-    }
-
-    function openCreateMode() {
-      document.getElementById('createModeScreen').style.display = 'block';
-      document.getElementById('modesOverlay').style.display = 'none';
-    }
-
-    function closeCreateMode() {
-      document.getElementById('createModeScreen').style.display = 'none';
-      openModes();
-    }
-
-    function saveMode() {
-      const name = document.getElementById('modeName').value;
-      const initCode = document.getElementById('modeInit').value;
-      const loopCode = document.getElementById('modeLoop').value;
-      const winCode = document.getElementById('modeWinCondition').value;
-      const settingsCode = document.getElementById('modeSettings').value;
-
-      if (!name) return alert('Введите название режима!');
-      
-      let settings;
-      try { settings = JSON.parse(settingsCode); } catch(e) { return alert('Ошибка JSON!'); }
-      
-      try {
-        if (initCode) new Function('scene', 'player', 'enemies', 'bullets', initCode);
-        if (loopCode) new Function('scene', 'player', 'enemies', 'bullets', 'delta', loopCode);
-        if (winCode) new Function('player', 'enemies', 'score', winCode);
-      } catch(e) { return alert('Ошибка в коде: ' + e.message); }
-
-      gameModes.push({
-        id: Date.now().toString(),
-        name, settings, initCode, loopCode, winCode
-      });
-      saveAllData();
-      closeCreateMode();
-      alert(`Режим "${name}" создан!`);
-    }
-
-    // ========== ПЕРСОНАЖИ ==========
-    function openCollection() {
-      const grid = document.getElementById('charactersGrid');
-      grid.innerHTML = '';
-      
-      characters.forEach(char => {
-        const card = document.createElement('div');
-        card.className = 'character-card';
-        card.onclick = () => selectCharacter(char);
-        
-        card.innerHTML = `
-          <div class="character-icon" style="color: ${char.stats.color}">⚔️</div>
-          <div class="character-name">${char.name}</div>
-          <small style="opacity:0.6;">❤️${char.stats.hp} ⚡${char.stats.reloadSpeed}</small>
-        `;
-        
-        if (char.id === selectedCharacter.id) card.classList.add('selected');
-        grid.appendChild(card);
-      });
-      
-      document.getElementById('collectionOverlay').style.display = 'block';
-    }
-
-    function selectCharacter(char) {
-      selectedCharacter = char;
-      document.querySelectorAll('.character-card').forEach(card => {
-        card.classList.remove('selected');
-        if (card.querySelector('.character-name').textContent === char.name) {
-          card.classList.add('selected');
-        }
-      });
-    }
-
-    function closeCollection() {
-      document.getElementById('collectionOverlay').style.display = 'none';
-    }
-
-    function openCreateCharacter() {
-      document.getElementById('createCharacterScreen').style.display = 'block';
-      document.getElementById('collectionOverlay').style.display = 'none';
-    }
-
-    function closeCreateCharacter() {
-      document.getElementById('createCharacterScreen').style.display = 'none';
-      openCollection();
-    }
-
-    function saveCharacter() {
-      const name = document.getElementById('charName').value;
-      const modelCode = document.getElementById('charModel').value;
-      const attackCode = document.getElementById('charAttack').value;
-      const superCode = document.getElementById('charSuper').value;
-      const passiveCode = document.getElementById('charPassive').value;
-      const statsCode = document.getElementById('charStats').value;
-
-      if (!name || !attackCode) return alert('Минимум: имя и код атаки!');
-      
-      let stats;
-      try { stats = JSON.parse(statsCode); } catch(e) { return alert('Ошибка JSON!'); }
-      
-      try {
-        if (modelCode) new Function('scene', 'THREE', 'color', 'return ' + modelCode)(null, THREE, 0xffffff);
-        new Function('player', 'enemies', 'bullets', 'scene', 'THREE', 'angle', attackCode);
-        if (superCode) new Function('player', 'enemies', 'bullets', 'scene', 'THREE', superCode);
-        if (passiveCode) new Function('player', 'enemies', 'scene', passiveCode);
-      } catch(e) { return alert('Ошибка в коде: ' + e.message); }
-
-      characters.push({
-        id: Date.now().toString(),
-        name, stats, modelCode, attackCode, superCode, passiveCode
-      });
-      saveAllData();
-      closeCreateCharacter();
-      alert(`Боец "${name}" создан!`);
-    }
-
-    // ========== ИНТЕРФЕЙС ==========
-    function showLogin() { alert('Функция входа будет добавлена позже'); }
-
-    function saveNickname() {
-      const nickname = document.getElementById('nicknameInput').value.trim();
-      if (!nickname) return alert('Введите никнейм!');
-      playerNickname = nickname;
-      localStorage.setItem('playerNickname', nickname);
-      document.getElementById('nicknameScreen').style.display = 'none';
-      document.getElementById('lobbyScreen').style.display = 'block';
-      document.getElementById('lobbyProfile').textContent = nickname[0].toUpperCase();
-    }
-
-    // ========== PWA ==========
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    let deferredPrompt;
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('installBtn').classList.add('show');
-      document.getElementById('welcomeMessage').textContent = 'Нажмите "Установить" для лучшего опыта';
-    });
-
-    window.installApp = async () => {
-      if (!deferredPrompt) return alert('Установка недоступна');
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        document.getElementById('installBtn').classList.remove('show');
-        document.getElementById('playBrowserBtn').classList.remove('show');
-      }
-      deferredPrompt = null;
-    };
-
-    window.addEventListener('appinstalled', () => {
-      document.getElementById('welcomeScreen').style.display = 'none';
-      checkFirstLaunch();
-    });
-
-    function startBrowserGame() {
-      document.getElementById('welcomeScreen').style.display = 'none';
-      checkFirstLaunch();
-    }
-
-    function checkFirstLaunch() {
-      const hasNickname = localStorage.getItem('playerNickname');
-      if (hasNickname) {
-        playerNickname = hasNickname;
-        document.getElementById('nicknameScreen').style.display = 'none';
-        document.getElementById('lobbyScreen').style.display = 'block';
-        document.getElementById('lobbyProfile').textContent = playerNickname[0].toUpperCase();
-      } else {
-        document.getElementById('nicknameScreen').style.display = 'flex';
-      }
-    }
-
-    if (isStandalone) {
-      document.getElementById('welcomeScreen').style.display = 'none';
-      checkFirstLaunch();
-    } else {
-      document.getElementById('welcomeScreen').style.display = 'flex';
-      document.getElementById('playBrowserBtn').classList.add('show');
-    }
-
-    // ========== КОМПИЛЯЦИЯ ФУНКЦИЙ ==========
-    function compileAll() {
-      const char = selectedCharacter;
-      const mode = selectedMode;
-      
-      return {
-        createModel: char.modelCode ? new Function('scene', 'THREE', 'color', 'return ' + char.modelCode) : null,
-        attack: new Function('player', 'enemies', 'bullets', 'scene', 'THREE', 'angle', char.attackCode),
-        superAttack: char.superCode ? new Function('player', 'enemies', 'bullets', 'scene', 'THREE', char.superCode) : null,
-        passive: char.passiveCode ? new Function('player', 'enemies', 'scene', char.passiveCode) : null,
-        modeInit: mode.initCode ? new Function('scene', 'player', 'enemies', 'bullets', mode.initCode) : null,
-        modeLoop: mode.loopCode ? new Function('scene', 'player', 'enemies', 'bullets', 'delta', mode.loopCode) : null,
-        modeWin: mode.winCode ? new Function('player', 'enemies', 'score', mode.winCode) : null
-      };
-    }
-
-    // ========== 3D ИГРА ==========
-    let scene, camera, renderer;
-    let player, enemies = [], bullets = [];
-    let moveAngle = null, attackAngle = null;
-    let score = 0, gameTime, gameRunning = false, timerInterval;
-    let playerHP, maxHP, superCharge = 0;
-    let compiledFunctions;
-    const W = window.innerWidth, H = window.innerHeight;
-
-    window.startGame = () => {
-      document.getElementById('lobbyScreen').style.display = 'none';
-      document.getElementById('gameContainer').style.display = 'block';
-      document.getElementById('gameUI').style.display = 'block';
-      initGame();
-    };
-
-    function initGame() {
-      compiledFunctions = compileAll();
-      const settings = selectedMode.settings;
-      
-      maxHP = selectedCharacter.stats.hp;
-      playerHP = maxHP;
-      superCharge = 0;
-      gameTime = settings.timeLimit || 120;
-      
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x87CEEB);
-      scene.fog = new THREE.Fog(0x87CEEB, 30, settings.mapSize + 10);
-      
-      camera = new THREE.PerspectiveCamera(60, W / H, 1, 1000);
-      camera.position.set(0, 40, 30);
-      camera.lookAt(0, 0, 0);
-      
-      const oldCanvas = document.querySelector('canvas');
-      if (oldCanvas) oldCanvas.remove();
-      
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(W, H);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      document.getElementById('gameContainer').prepend(renderer.domElement);
-      
-      // Освещение
-      const light = new THREE.DirectionalLight(0xffffff, 1);
-      light.position.set(20, 30, 10);
-      light.castShadow = true;
-      light.shadow.camera.left = -settings.mapSize;
-      light.shadow.camera.right = settings.mapSize;
-      light.shadow.camera.top = settings.mapSize;
-      light.shadow.camera.bottom = -settings.mapSize;
-      light.shadow.mapSize.width = 1024;
-      light.shadow.mapSize.height = 1024;
-      scene.add(light);
-      scene.add(new THREE.AmbientLight(0x404040));
-      
-      // Земля
-      const groundGeo = new THREE.PlaneGeometry(settings.mapSize, settings.mapSize);
-      const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ color: 0x4CAF50 }));
-      ground.rotation.x = -Math.PI / 2;
-      ground.receiveShadow = true;
-      scene.add(ground);
-      
-      // Препятствия
-      for (let i = 0; i < 12; i++) {
-        const ox = (Math.random() - 0.5) * settings.mapSize * 0.8;
-        const oz = (Math.random() - 0.5) * settings.mapSize * 0.8;
-        const box = new THREE.Mesh(
-          new THREE.BoxGeometry(2 + Math.random() * 2, 2, 2 + Math.random() * 2),
-          new THREE.MeshLambertMaterial({ color: 0x8B4513 })
-        );
-        box.position.set(ox, 1, oz);
-        box.castShadow = true;
-        box.receiveShadow = true;
-        scene.add(box);
-      }
-      
-      // Игрок
-      const playerColor = parseInt(selectedCharacter.stats.color.replace('#', ''), 16);
-      if (compiledFunctions.createModel) {
-        player = compiledFunctions.createModel(scene, THREE, playerColor);
-      } else {
-        player = createDefaultModel(playerColor);
-      }
-      player.position.set(0, 0, 0);
-      
-      // Враги
-      enemies = [];
-      for (let i = 0; i < (settings.enemyCount || 4); i++) {
-        const ex = (Math.random() - 0.5) * settings.mapSize * 0.7;
-        const ez = (Math.random() - 0.5) * settings.mapSize * 0.7;
-        const enemyMesh = createDefaultModel(0xff4444);
-        enemyMesh.position.set(ex, 0, ez);
-        enemies.push({
-          mesh: enemyMesh,
-          hp: 60, maxHp: 60,
-          alive: true, respawnTimer: 0,
-          shootCooldown: 0
-        });
-      }
-      
-      bullets = [];
-      score = 0;
-      gameRunning = true;
-      
-      document.getElementById('gameOver').style.display = 'none';
-      document.getElementById('hpFill').style.width = '100%';
-      document.getElementById('scoreDisplay').textContent = '🏆 0';
-      
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        gameTime--;
-        document.getElementById('timer').textContent = `${Math.floor(gameTime/60)}:${(gameTime%60).toString().padStart(2,'0')}`;
-        if (gameTime <= 0) endGame();
-      }, 1000);
-      
-      // Инициализация режима
-      if (compiledFunctions.modeInit) {
-        compiledFunctions.modeInit(scene, player, enemies, bullets);
-      }
-      
-      setupJoysticks();
-      animate();
-    }
-
-    function createDefaultModel(color) {
-      const group = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(1, 1.2, 2, 8),
-        new THREE.MeshLambertMaterial({ color })
-      );
-      body.position.y = 1; body.castShadow = true; group.add(body);
-      
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.7, 8, 8),
-        new THREE.MeshLambertMaterial({ color: 0xffdbac })
-      );
-      head.position.y = 2.4; group.add(head);
-      
-      scene.add(group);
-      return group;
-    }
-
-    function setupJoysticks() {
-      setupJoystick('moveBase', 'moveThumb', (angle) => { moveAngle = angle; });
-      setupJoystick('attackBase', 'attackThumb', (angle) => { attackAngle = angle; });
-    }
-
-    function setupJoystick(baseId, thumbId, callback) {
-      const base = document.getElementById(baseId);
-      const thumb = document.getElementById(thumbId);
-      let active = false;
-      
-      const updatePos = (clientX, clientY) => {
-        const rect = base.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = clientX - cx;
-        const dy = clientY - cy;
-        const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 45);
-        const angle = Math.atan2(dy, dx);
-        const tx = Math.cos(angle) * dist;
-        const ty = Math.sin(angle) * dist;
-        thumb.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
-        callback(dist > 8 ? angle : null);
-      };
-      
-      base.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        updatePos(e.touches[0].clientX, e.touches[0].clientY);
-      });
-      base.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        updatePos(e.touches[0].clientX, e.touches[0].clientY);
-      });
-      base.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        thumb.style.transform = 'translate(-50%, -50%)';
-        callback(null);
-      });
-    }
-
-    function animate() {
-      if (!gameRunning) return;
-      requestAnimationFrame(animate);
-      
-      // Пассивка
-      if (compiledFunctions.passive) {
-        compiledFunctions.passive(player, enemies, scene);
-      }
-      
-      // Режим loop
-      if (compiledFunctions.modeLoop) {
-        compiledFunctions.modeLoop(scene, player, enemies, bullets, 1);
-      }
-      
-      // Движение
-      if (moveAngle !== null) {
-        player.position.x += Math.cos(moveAngle) * selectedCharacter.stats.speed;
-        player.position.z += Math.sin(moveAngle) * selectedCharacter.stats.speed;
-        const halfMap = selectedMode.settings.mapSize / 2 - 3;
-        player.position.x = Math.max(-halfMap, Math.min(halfMap, player.position.x));
-        player.position.z = Math.max(-halfMap, Math.min(halfMap, player.position.z));
-      }
-      
-      camera.position.x = player.position.x;
-      camera.position.z = player.position.z + 30;
-      camera.lookAt(player.position.x, 0, player.position.z);
-      
-      // Атака
-      if (attackAngle !== null && player && gameRunning) {
-        if (!player.userData) player.userData = {};
-        if (!player.userData.shootCooldown || player.userData.shootCooldown <= 0) {
-          compiledFunctions.attack(player, enemies, bullets, scene, THREE, attackAngle);
-          player.userData.shootCooldown = selectedCharacter.stats.reloadSpeed;
-          superCharge += selectedCharacter.stats.superChargeRate;
-          
-          // Супер при полной зарядке
-          if (superCharge >= 100 && compiledFunctions.superAttack) {
-            compiledFunctions.superAttack(player, enemies, bullets, scene, THREE);
-            superCharge = 0;
-          }
-        }
-      }
-      
-      if (player.userData?.shootCooldown > 0) player.userData.shootCooldown--;
-      
-      // Враги
-      enemies.forEach(enemy => {
-        if (!enemy.alive) {
-          enemy.respawnTimer--;
-          if (enemy.respawnTimer <= 0) {
-            enemy.alive = true;
-            enemy.hp = enemy.maxHp;
-            enemy.mesh.visible = true;
-            enemy.mesh.position.set(
-              (Math.random()-0.5) * selectedMode.settings.mapSize * 0.8,
-              0,
-              (Math.random()-0.5) * selectedMode.settings.mapSize * 0.8
-            );
-          }
-          return;
-        }
-        
-        const dx = player.position.x - enemy.mesh.position.x;
-        const dz = player.position.z - enemy.mesh.position.z;
-        const dist = Math.sqrt(dx*dx + dz*dz);
-        
-        if (dist > 5) {
-          enemy.mesh.position.x += (dx / dist) * 0.06;
-          enemy.mesh.position.z += (dz / dist) * 0.06;
-        }
-        
-        enemy.mesh.lookAt(player.position.x, 0, player.position.z);
-        
-        if (dist < 25 && enemy.shootCooldown <= 0) {
-          const angle = Math.atan2(dz, dx);
-          const bullet = new THREE.Mesh(
-            new THREE.SphereGeometry(0.25, 6, 6),
-            new THREE.MeshLambertMaterial({ color: 0xff0000 })
-          );
-          bullet.position.copy(enemy.mesh.position);
-          bullet.position.y = 1.5;
-          bullet.userData = { vx: Math.cos(angle)*0.4, vz: Math.sin(angle)*0.4, life: 80, damage: 10 };
-          scene.add(bullet);
-          bullets.push(bullet);
-          enemy.shootCooldown = 60;
-        }
-        if (enemy.shootCooldown > 0) enemy.shootCooldown--;
-      });
-      
-      // Пули
-      bullets = bullets.filter(b => {
-        b.position.x += b.userData.vx || 0;
-        b.position.z += b.userData.vz || 0;
-        b.userData.life = (b.userData.life || 0) - 1;
-        
-        if (b.userData.life <= 0) { scene.remove(b); return false; }
-        
-        if (b.material.color.getHex() === 0xff0000) {
-          const d = player.position.distanceTo(b.position);
-          if (d < 2) {
-            playerHP -= b.userData.damage || 10;
-            document.getElementById('hpFill').style.width = (playerHP/maxHP*100)+'%';
-            scene.remove(b);
-            if (playerHP <= 0) endGame();
-            return false;
-          }
-        } else {
-          for (let enemy of enemies) {
-            if (!enemy.alive) continue;
-            const d = enemy.mesh.position.distanceTo(b.position);
-            if (d < 2.5) {
-              enemy.hp -= b.userData.damage || 20;
-              scene.remove(b);
-              if (enemy.hp <= 0) {
-                enemy.alive = false;
-                enemy.mesh.visible = false;
-                enemy.respawnTimer = 120;
-                score += 10;
-                document.getElementById('scoreDisplay').textContent = '🏆 '+score;
-              }
-              return false;
+            function checkAutoAdmin() {
+                if (currentUser && ADMIN_NICKS.includes(currentUser.nick)) {
+                    isAdmin = true;
+                    localStorage.setItem('vastaIsAdmin', 'true');
+                }
             }
-          }
+            checkAutoAdmin();
+
+            // ============ IMAGE VIEWER ============
+            const imageViewerOverlay = document.getElementById('imageViewerOverlay');
+            const imageViewerImg = document.getElementById('imageViewerImg');
+            const imageViewerClose = document.getElementById('imageViewerClose');
+            const imageViewerPrev = document.getElementById('imageViewerPrev');
+            const imageViewerNext = document.getElementById('imageViewerNext');
+            const imageViewerCounter = document.getElementById('imageViewerCounter');
+            let viewerImages = [];
+            let viewerIndex = 0;
+
+            function openImageViewer(images, startIndex = 0) {
+                if (!images || images.length === 0) return;
+                viewerImages = images;
+                viewerIndex = Math.max(0, Math.min(startIndex, images.length - 1));
+                showViewerImage();
+                if (imageViewerOverlay) imageViewerOverlay.classList.remove('hidden');
+                const hasMultiple = images.length > 1;
+                if (imageViewerPrev) imageViewerPrev.classList.toggle('hidden-nav', !hasMultiple);
+                if (imageViewerNext) imageViewerNext.classList.toggle('hidden-nav', !hasMultiple);
+                if (imageViewerCounter) {
+                    imageViewerCounter.classList.toggle('hidden-nav', !hasMultiple);
+                    imageViewerCounter.textContent = hasMultiple ? `${viewerIndex + 1} из ${images.length}` :
+                        '';
+                }
+            }
+
+            function showViewerImage() {
+                if (imageViewerImg && viewerImages[viewerIndex]) {
+                    imageViewerImg.src = viewerImages[viewerIndex];
+                }
+                if (imageViewerCounter && viewerImages.length > 1) {
+                    imageViewerCounter.textContent = `${viewerIndex + 1} из ${viewerImages.length}`;
+                }
+            }
+
+            function closeImageViewer() {
+                if (imageViewerOverlay) imageViewerOverlay.classList.add('hidden');
+                viewerImages = [];
+                viewerIndex = 0;
+            }
+            if (imageViewerClose) imageViewerClose.addEventListener('click', closeImageViewer);
+            if (imageViewerOverlay) {
+                imageViewerOverlay.addEventListener('click', function(e) {
+                    if (e.target === imageViewerOverlay) closeImageViewer();
+                });
+            }
+            if (imageViewerPrev) {
+                imageViewerPrev.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (viewerImages.length > 1) {
+                        viewerIndex = (viewerIndex - 1 + viewerImages.length) % viewerImages.length;
+                        showViewerImage();
+                    }
+                });
+            }
+            if (imageViewerNext) {
+                imageViewerNext.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (viewerImages.length > 1) {
+                        viewerIndex = (viewerIndex + 1) % viewerImages.length;
+                        showViewerImage();
+                    }
+                });
+            }
+            document.addEventListener('keydown', function(e) {
+                if (imageViewerOverlay && !imageViewerOverlay.classList.contains('hidden')) {
+                    if (e.key === 'Escape') closeImageViewer();
+                    if (e.key === 'ArrowLeft' && viewerImages.length > 1) {
+                        viewerIndex = (viewerIndex - 1 + viewerImages.length) % viewerImages.length;
+                        showViewerImage();
+                    }
+                    if (e.key === 'ArrowRight' && viewerImages.length > 1) {
+                        viewerIndex = (viewerIndex + 1) % viewerImages.length;
+                        showViewerImage();
+                    }
+                }
+            });
+
+            // Клик по главному фото
+            const heroPhotoWrapper = document.getElementById('heroPhotoWrapper');
+            if (heroPhotoWrapper) {
+                heroPhotoWrapper.addEventListener('click', function() {
+                    const img = this.querySelector('.creator-photo');
+                    if (img && img.src) openImageViewer([img.src], 0);
+                });
+            }
+
+            // ============ НАВИГАЦИЯ ============
+            const sections = {
+                'home-section': document.getElementById('home-section'),
+                'vasta-section': document.getElementById('vasta-section'),
+                'esoterica-section': document.getElementById('esoterica-section'),
+                'astrology-section': document.getElementById('astrology-section'),
+                'profile-section': document.getElementById('profile-section')
+            };
+            const navButtons = document.querySelectorAll('.nav-btn[data-target]');
+
+            function showSection(sectionId) {
+                Object.values(sections).forEach(sec => sec.classList.add('hidden-section'));
+                const target = sections[sectionId];
+                if (target) target.classList.remove('hidden-section');
+                navButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-target') === sectionId) btn.classList.add('active');
+                });
+            }
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const target = this.getAttribute('data-target');
+                    if (target) showSection(target);
+                });
+            });
+
+            // ============ АДМИН-БЛОКИ ============
+            function updateAdminUI() {
+                const adminBlocks = document.querySelectorAll('.admin-only');
+                adminBlocks.forEach(block => block.classList.toggle('visible', isAdmin));
+                const profileStatus = document.getElementById('profileStatus');
+                if (profileStatus) profileStatus.innerHTML = isAdmin ? 'Здравствуйте, Катрин!' :
+                    'Пользователь';
+                const showAdminBtn = document.getElementById('showAdminLoginBtn');
+                if (showAdminBtn) showAdminBtn.style.display = isAdmin ? 'none' : 'inline-flex';
+            }
+
+            // ============ АДМИНСКИЙ ВХОД ============
+            const ADMIN_PASSWORD = 'KatrinMomot';
+            const showAdminLoginBtn = document.getElementById('showAdminLoginBtn');
+            const adminPasswordBlock = document.getElementById('adminPasswordBlock');
+            const adminPasswordInput = document.getElementById('adminPasswordInput');
+            const cancelAdminLoginBtn = document.getElementById('cancelAdminLoginBtn');
+            const confirmAdminLoginBtn = document.getElementById('confirmAdminLoginBtn');
+            const adminLoginMessage = document.getElementById('adminLoginMessage');
+
+            function hideAdminPasswordBlock() {
+                if (adminPasswordBlock) adminPasswordBlock.classList.remove('visible');
+                if (adminPasswordInput) adminPasswordInput.value = '';
+                if (adminLoginMessage) adminLoginMessage.textContent = '';
+            }
+            if (showAdminLoginBtn) {
+                showAdminLoginBtn.addEventListener('click', () => {
+                    if (adminPasswordBlock) adminPasswordBlock.classList.add('visible');
+                    if (adminPasswordInput) adminPasswordInput.focus();
+                });
+            }
+            if (cancelAdminLoginBtn) cancelAdminLoginBtn.addEventListener('click', hideAdminPasswordBlock);
+            if (confirmAdminLoginBtn) {
+                confirmAdminLoginBtn.addEventListener('click', () => {
+                    if (!adminPasswordInput) return;
+                    const pass = adminPasswordInput.value.trim();
+                    if (pass === ADMIN_PASSWORD) {
+                        isAdmin = true;
+                        localStorage.setItem('vastaIsAdmin', 'true');
+                        updateAdminUI();
+                        hideAdminPasswordBlock();
+                        if (adminLoginMessage) adminLoginMessage.textContent = '';
+                    } else {
+                        if (adminLoginMessage) {
+                            adminLoginMessage.textContent = 'Неверный пароль. Попробуйте ещё раз.';
+                            adminLoginMessage.style.color = '#c4203a';
+                        }
+                        if (adminPasswordInput) { adminPasswordInput.value = '';
+                            adminPasswordInput.focus(); }
+                    }
+                });
+            }
+
+            // ============ ХЕШИРОВАНИЕ ============
+            async function hashPassword(password, salt) {
+                const encoder = new TextEncoder();
+                const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(password),
+                    'PBKDF2', false, ['deriveBits']);
+                const bits = await crypto.subtle.deriveBits({
+                    name: 'PBKDF2',
+                    salt: encoder.encode(salt),
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                }, keyMaterial, 256);
+                return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            function generateSalt() {
+                return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2,
+                    '0')).join('');
+            }
+
+            // ============ СЖАТИЕ АВАТАРА ============
+            function compressAvatar(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const size = 150;
+                            canvas.width = size;
+                            canvas.height = size;
+                            const ctx = canvas.getContext('2d');
+                            const minDim = Math.min(img.width, img.height);
+                            const sx = (img.width - minDim) / 2;
+                            const sy = (img.height - minDim) / 2;
+                            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+                            resolve(canvas.toDataURL('image/jpeg', 0.6));
+                        };
+                        img.onerror = reject;
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // ============ ОБНОВЛЕНИЕ UI ПРОФИЛЯ ============
+            function updateAccountUI() {
+                const loggedOutBlock = document.getElementById('loggedOutBlock');
+                const loggedInBlock = document.getElementById('loggedInBlock');
+                const profileAvatarImg = document.getElementById('profileAvatarImg');
+                const profileNickDisplay = document.getElementById('profileNickDisplay');
+                const profileEmailDisplay = document.getElementById('profileEmailDisplay');
+                const profileNameDisplay = document.getElementById('profileNameDisplay');
+                const editAvatarPreview = document.getElementById('editAvatarPreview');
+
+                if (currentUser) {
+                    if (loggedOutBlock) loggedOutBlock.style.display = 'none';
+                    if (loggedInBlock) loggedInBlock.style.display = 'block';
+                    if (profileNickDisplay) profileNickDisplay.textContent = currentUser.nick || '';
+                    if (profileEmailDisplay) profileEmailDisplay.textContent = currentUser.email || '';
+                    const fullName = [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ');
+                    if (profileNameDisplay) profileNameDisplay.textContent = fullName || '';
+                    const avatarUrl = currentUser.avatarBase64 || '';
+                    if (profileAvatarImg) {
+                        if (avatarUrl) { profileAvatarImg.src = avatarUrl;
+                            profileAvatarImg.style.display = 'block'; } else { profileAvatarImg.style.display =
+                                'none'; }
+                    }
+                    if (editAvatarPreview) {
+                        editAvatarPreview.src = avatarUrl ||
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e8e0d5' width='100' height='100'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23999' font-size='14'%3Eфото%3C/text%3E%3C/svg%3E";
+                    }
+                } else {
+                    if (loggedOutBlock) loggedOutBlock.style.display = 'block';
+                    if (loggedInBlock) loggedInBlock.style.display = 'none';
+                }
+                checkAutoAdmin();
+                updateAdminUI();
+            }
+
+            // Клик по аватарке в профиле
+            const profileAvatarImg = document.getElementById('profileAvatarImg');
+            if (profileAvatarImg) {
+                profileAvatarImg.addEventListener('click', function() {
+                    if (currentUser && currentUser.avatarBase64) {
+                        openImageViewer([currentUser.avatarBase64], 0);
+                    }
+                });
+            }
+
+            // ============ РЕДАКТИРОВАНИЕ ПРОФИЛЯ ============
+            const editProfileBtn = document.getElementById('editProfileBtn');
+            const editProfileBlock = document.getElementById('editProfileBlock');
+            const cancelEditProfileBtn = document.getElementById('cancelEditProfileBtn');
+            const saveProfileBtn = document.getElementById('saveProfileBtn');
+            const editProfileMsg = document.getElementById('editProfileMsg');
+            const editAvatarInput = document.getElementById('editAvatarInput');
+            const editAvatarPreview = document.getElementById('editAvatarPreview');
+            let editAvatarBase64 = null;
+
+            function populateEditProfileForm() {
+                if (!currentUser) return;
+                document.getElementById('editNick').value = currentUser.nick || '';
+                document.getElementById('editFirstName').value = currentUser.firstName || '';
+                document.getElementById('editLastName').value = currentUser.lastName || '';
+                document.getElementById('editEmail').value = currentUser.email || '';
+                document.getElementById('editOldPassword').value = '';
+                document.getElementById('editNewPassword1').value = '';
+                document.getElementById('editNewPassword2').value = '';
+                editAvatarBase64 = null;
+                if (editAvatarPreview) {
+                    editAvatarPreview.src = currentUser.avatarBase64 ||
+                        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e8e0d5' width='100' height='100'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23999' font-size='14'%3Eфото%3C/text%3E%3C/svg%3E";
+                }
+                if (editAvatarInput) editAvatarInput.value = '';
+                if (editProfileMsg) { editProfileMsg.textContent = '';
+                    editProfileMsg.className = 'modal-msg'; }
+            }
+
+            function hideEditProfileForm() {
+                if (editProfileBlock) editProfileBlock.classList.remove('visible');
+                editAvatarBase64 = null;
+            }
+
+            if (editProfileBtn && editProfileBlock) {
+                editProfileBtn.addEventListener('click', () => {
+                    editProfileBlock.classList.add('visible');
+                    populateEditProfileForm();
+                });
+            }
+            if (cancelEditProfileBtn) cancelEditProfileBtn.addEventListener('click', hideEditProfileForm);
+
+            if (editAvatarInput && editAvatarPreview) {
+                editAvatarInput.addEventListener('change', async function() {
+                    const file = this.files[0];
+                    if (!file) return;
+                    try {
+                        const dataUrl = await compressAvatar(file);
+                        editAvatarBase64 = dataUrl;
+                        editAvatarPreview.src = dataUrl;
+                    } catch (err) {
+                        console.error('Ошибка сжатия аватара:', err);
+                    }
+                });
+            }
+
+            if (saveProfileBtn) {
+                saveProfileBtn.addEventListener('click', async function() {
+                    if (!currentUser) return;
+                    if (editProfileMsg) { editProfileMsg.textContent = '';
+                        editProfileMsg.className = 'modal-msg'; }
+                    const nick = document.getElementById('editNick')?.value.trim();
+                    const firstName = document.getElementById('editFirstName')?.value.trim() || null;
+                    const lastName = document.getElementById('editLastName')?.value.trim() || null;
+                    const email = document.getElementById('editEmail')?.value.trim() || null;
+                    const oldPassword = document.getElementById('editOldPassword')?.value;
+                    const newPassword1 = document.getElementById('editNewPassword1')?.value;
+                    const newPassword2 = document.getElementById('editNewPassword2')?.value;
+
+                    if (!nick || nick.length < 3) {
+                        if (editProfileMsg) { editProfileMsg.textContent =
+                                'Ник должен содержать минимум 3 символа.';
+                            editProfileMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    if (nick !== currentUser.nick) {
+                        try {
+                            const existingQuery = await usersCollection.where('nick', '==', nick).get();
+                            if (!existingQuery.empty) {
+                                if (editProfileMsg) { editProfileMsg.textContent =
+                                        'Этот ник уже занят.';
+                                    editProfileMsg.className = 'modal-msg error'; }
+                                return;
+                            }
+                        } catch (err) {
+                            if (editProfileMsg) { editProfileMsg.textContent =
+                                    'Ошибка проверки ника.';
+                                editProfileMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                    }
+                    const updateData = { nick, firstName, lastName, email };
+                    if (editAvatarBase64) updateData.avatarBase64 = editAvatarBase64;
+
+                    // Смена пароля
+                    if (newPassword1 || newPassword2 || oldPassword) {
+                        if (!oldPassword) {
+                            if (editProfileMsg) { editProfileMsg.textContent =
+                                    'Введите текущий пароль для смены.';
+                                editProfileMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        if (newPassword1 !== newPassword2) {
+                            if (editProfileMsg) { editProfileMsg.textContent =
+                                    'Новые пароли не совпадают.';
+                                editProfileMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        if (newPassword1.length < 6) {
+                            if (editProfileMsg) { editProfileMsg.textContent =
+                                    'Новый пароль должен содержать минимум 6 символов.';
+                                editProfileMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        const userDoc = await usersCollection.doc(currentUser.uid).get();
+                        const userData = userDoc.data();
+                        const oldHash = await hashPassword(oldPassword, userData.salt);
+                        if (oldHash !== userData.passwordHash) {
+                            if (editProfileMsg) { editProfileMsg.textContent =
+                                    'Неверный текущий пароль.';
+                                editProfileMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        const newSalt = generateSalt();
+                        updateData.salt = newSalt;
+                        updateData.passwordHash = await hashPassword(newPassword1, newSalt);
+                    }
+
+                    try {
+                        await usersCollection.doc(currentUser.uid).update(updateData);
+                        currentUser.nick = nick;
+                        currentUser.firstName = firstName;
+                        currentUser.lastName = lastName;
+                        currentUser.email = email;
+                        if (editAvatarBase64) currentUser.avatarBase64 = editAvatarBase64;
+                        localStorage.setItem('vastaCurrentUser', JSON.stringify(currentUser));
+                        if (editProfileMsg) { editProfileMsg.textContent = 'Данные обновлены!';
+                            editProfileMsg.className = 'modal-msg success'; }
+                        updateAccountUI();
+                        checkAutoAdmin();
+                        updateAdminUI();
+                        setTimeout(hideEditProfileForm, 1500);
+                    } catch (err) {
+                        if (editProfileMsg) { editProfileMsg.textContent = 'Ошибка: ' + err.message;
+                            editProfileMsg.className = 'modal-msg error'; }
+                    }
+                });
+            }
+
+            // ============ ВЫХОД ============
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    currentUser = null;
+                    localStorage.removeItem('vastaCurrentUser');
+                    hideEditProfileForm();
+                    updateAccountUI();
+                    updateAdminUI();
+                });
+            }
+
+            // ============ МОДАЛЬНОЕ ОКНО АККАУНТА ============
+            const authModalOverlay = document.getElementById('authModalOverlay');
+            const authModalClose = document.getElementById('authModalClose');
+            const openAuthModalBtn = document.getElementById('openAuthModalBtn');
+            const modalTabs = document.querySelectorAll('.modal-tab');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const forgotPasswordBlock = document.getElementById('forgotPasswordBlock');
+            const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+            const backToLoginBtn = document.getElementById('backToLoginBtn');
+            const loginMsg = document.getElementById('loginMsg');
+            const registerMsg = document.getElementById('registerMsg');
+            const forgotMsg = document.getElementById('forgotMsg');
+            let registerAvatarBase64 = null;
+
+            function openAuthModal() {
+                if (authModalOverlay) authModalOverlay.classList.remove('hidden');
+                resetAuthModal();
+            }
+
+            function closeAuthModal() {
+                if (authModalOverlay) authModalOverlay.classList.add('hidden');
+                resetAuthModal();
+            }
+
+            function resetAuthModal() {
+                modalTabs.forEach(t => t.classList.remove('active'));
+                const loginTab = document.querySelector('.modal-tab[data-tab="loginTab"]');
+                if (loginTab) loginTab.classList.add('active');
+                if (loginForm) loginForm.classList.add('active');
+                if (registerForm) registerForm.classList.remove('active');
+                if (forgotPasswordBlock) forgotPasswordBlock.classList.remove('active');
+                ['loginNick', 'loginPassword', 'registerNick', 'registerFirstName', 'registerLastName',
+                    'registerEmail', 'registerPassword1', 'registerPassword2', 'forgotEmail'
+                ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                [loginMsg, registerMsg, forgotMsg].forEach(el => { if (el) el.textContent = ''; });
+                registerAvatarBase64 = null;
+                const avatarPreview = document.getElementById('registerAvatarPreview');
+                if (avatarPreview) avatarPreview.src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e8e0d5' width='100' height='100'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%23999' font-size='14'%3Eфото%3C/text%3E%3C/svg%3E";
+                const avatarInput = document.getElementById('registerAvatarInput');
+                if (avatarInput) avatarInput.value = '';
+            }
+
+            if (openAuthModalBtn) openAuthModalBtn.addEventListener('click', openAuthModal);
+            if (authModalClose) authModalClose.addEventListener('click', closeAuthModal);
+            if (authModalOverlay) {
+                authModalOverlay.addEventListener('click', function(e) {
+                    if (e.target === authModalOverlay) closeAuthModal();
+                });
+            }
+            modalTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const target = this.getAttribute('data-tab');
+                    modalTabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    if (loginForm) loginForm.classList.toggle('active', target === 'loginTab');
+                    if (registerForm) registerForm.classList.toggle('active', target === 'registerTab');
+                    if (forgotPasswordBlock) forgotPasswordBlock.classList.remove('active');
+                    [loginMsg, registerMsg, forgotMsg].forEach(el => { if (el) el.textContent = ''; });
+                });
+            });
+            if (forgotPasswordLink) {
+                forgotPasswordLink.addEventListener('click', () => {
+                    if (loginForm) loginForm.classList.remove('active');
+                    if (registerForm) registerForm.classList.remove('active');
+                    if (forgotPasswordBlock) forgotPasswordBlock.classList.add('active');
+                    [loginMsg, registerMsg, forgotMsg].forEach(el => { if (el) el.textContent = ''; });
+                    const forgotEmail = document.getElementById('forgotEmail');
+                    if (forgotEmail) forgotEmail.focus();
+                });
+            }
+            if (backToLoginBtn) {
+                backToLoginBtn.addEventListener('click', () => {
+                    if (forgotPasswordBlock) forgotPasswordBlock.classList.remove('active');
+                    if (loginForm) loginForm.classList.add('active');
+                    if (registerForm) registerForm.classList.remove('active');
+                    [loginMsg, forgotMsg].forEach(el => { if (el) el.textContent = ''; });
+                });
+            }
+            document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targets = (this.getAttribute('data-target') || '').split(',');
+                    targets.forEach(targetId => {
+                        const input = document.getElementById(targetId.trim());
+                        if (input) input.type = input.type === 'password' ? 'text' : 'password';
+                    });
+                    const isVisible = targets.some(id => { const inp = document.getElementById(id
+                            .trim()); return inp && inp.type === 'text'; });
+                    this.textContent = isVisible ? '🙈' : '👁';
+                    this.title = isVisible ? 'Скрыть пароли' : 'Показать пароли';
+                });
+            });
+
+            const registerAvatarInput = document.getElementById('registerAvatarInput');
+            const registerAvatarPreview = document.getElementById('registerAvatarPreview');
+            if (registerAvatarInput && registerAvatarPreview) {
+                registerAvatarInput.addEventListener('change', async function() {
+                    const file = this.files[0];
+                    if (!file) return;
+                    try {
+                        const dataUrl = await compressAvatar(file);
+                        registerAvatarBase64 = dataUrl;
+                        registerAvatarPreview.src = dataUrl;
+                    } catch (err) { console.error('Ошибка сжатия аватара:', err); }
+                });
+            }
+
+            // ============ РЕГИСТРАЦИЯ ============
+            if (registerForm) {
+                registerForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    if (registerMsg) { registerMsg.textContent = '';
+                        registerMsg.className = 'modal-msg'; }
+                    const nick = document.getElementById('registerNick')?.value.trim();
+                    const firstName = document.getElementById('registerFirstName')?.value.trim() || null;
+                    const lastName = document.getElementById('registerLastName')?.value.trim() || null;
+                    const email = document.getElementById('registerEmail')?.value.trim() || null;
+                    const pass1 = document.getElementById('registerPassword1')?.value;
+                    const pass2 = document.getElementById('registerPassword2')?.value;
+                    if (!nick || !pass1 || !pass2) {
+                        if (registerMsg) { registerMsg.textContent = 'Заполните обязательные поля.';
+                            registerMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    if (nick.length < 3) {
+                        if (registerMsg) { registerMsg.textContent =
+                                'Ник должен содержать минимум 3 символа.';
+                            registerMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    if (pass1 !== pass2) {
+                        if (registerMsg) { registerMsg.textContent = 'Пароли не совпадают.';
+                            registerMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    if (pass1.length < 6) {
+                        if (registerMsg) { registerMsg.textContent =
+                                'Пароль должен содержать минимум 6 символов.';
+                            registerMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    try {
+                        const existingQuery = await usersCollection.where('nick', '==', nick).get();
+                        if (!existingQuery.empty) {
+                            if (registerMsg) { registerMsg.textContent =
+                                    'Этот ник уже занят. Выберите другой.';
+                                registerMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                    } catch (err) {
+                        if (registerMsg) { registerMsg.textContent =
+                                'Ошибка проверки ника. Возможно, нужен индекс в Firestore для поля nick.';
+                            registerMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    const salt = generateSalt();
+                    const passwordHash = await hashPassword(pass1, salt);
+                    const userData = {
+                        nick,
+                        firstName,
+                        lastName,
+                        email,
+                        passwordHash,
+                        salt,
+                        avatarBase64: registerAvatarBase64 || null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    try {
+                        const docRef = await usersCollection.add(userData);
+                        currentUser = {
+                            uid: docRef.id,
+                            nick,
+                            firstName,
+                            lastName,
+                            email,
+                            avatarBase64: registerAvatarBase64 || null
+                        };
+                        localStorage.setItem('vastaCurrentUser', JSON.stringify(currentUser));
+                        if (registerMsg) { registerMsg.textContent = 'Аккаунт создан! Вы вошли.';
+                            registerMsg.className = 'modal-msg success'; }
+                        updateAccountUI();
+                        checkAutoAdmin();
+                        updateAdminUI();
+                        setTimeout(closeAuthModal, 1500);
+                    } catch (err) {
+                        if (registerMsg) { registerMsg.textContent = 'Ошибка: ' + err.message;
+                            registerMsg.className = 'modal-msg error'; }
+                    }
+                });
+            }
+
+            // ============ ВХОД ============
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    if (loginMsg) { loginMsg.textContent = '';
+                        loginMsg.className = 'modal-msg'; }
+                    const nick = document.getElementById('loginNick')?.value.trim();
+                    const password = document.getElementById('loginPassword')?.value;
+                    if (!nick || !password) {
+                        if (loginMsg) { loginMsg.textContent = 'Введите ник и пароль.';
+                            loginMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    try {
+                        const query = await usersCollection.where('nick', '==', nick).get();
+                        if (query.empty) {
+                            if (loginMsg) { loginMsg.textContent =
+                                    'Пользователь с таким ником не найден.';
+                                loginMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        const doc = query.docs[0];
+                        const data = doc.data();
+                        const hash = await hashPassword(password, data.salt);
+                        if (hash !== data.passwordHash) {
+                            if (loginMsg) { loginMsg.textContent = 'Неверный пароль.';
+                                loginMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        currentUser = {
+                            uid: doc.id,
+                            nick: data.nick,
+                            firstName: data.firstName || null,
+                            lastName: data.lastName || null,
+                            email: data.email || null,
+                            avatarBase64: data.avatarBase64 || null
+                        };
+                        localStorage.setItem('vastaCurrentUser', JSON.stringify(currentUser));
+                        if (loginMsg) { loginMsg.textContent = 'Добро пожаловать, ' + data.nick + '!';
+                            loginMsg.className = 'modal-msg success'; }
+                        updateAccountUI();
+                        checkAutoAdmin();
+                        updateAdminUI();
+                        setTimeout(closeAuthModal, 1200);
+                    } catch (err) {
+                        if (loginMsg) { loginMsg.textContent =
+                                'Ошибка входа. Возможно, нужен индекс Firestore для поля nick.';
+                            loginMsg.className = 'modal-msg error'; }
+                    }
+                });
+            }
+
+            // ============ ВОССТАНОВЛЕНИЕ ПАРОЛЯ ============
+            const sendResetBtn = document.getElementById('sendResetBtn');
+            if (sendResetBtn) {
+                sendResetBtn.addEventListener('click', async function() {
+                    if (forgotMsg) { forgotMsg.textContent = '';
+                        forgotMsg.className = 'modal-msg'; }
+                    const email = document.getElementById('forgotEmail')?.value.trim();
+                    if (!email) {
+                        if (forgotMsg) { forgotMsg.textContent = 'Введите email.';
+                            forgotMsg.className = 'modal-msg error'; }
+                        return;
+                    }
+                    try {
+                        const query = await usersCollection.where('email', '==', email).get();
+                        if (query.empty) {
+                            if (forgotMsg) { forgotMsg.textContent =
+                                    'Пользователь с таким email не найден.';
+                                forgotMsg.className = 'modal-msg error'; }
+                            return;
+                        }
+                        const doc = query.docs[0];
+                        const resetToken = generateSalt() + Date.now().toString(36);
+                        const expiry = new Date(Date.now() + 3600000);
+                        await usersCollection.doc(doc.id).update({
+                            resetToken,
+                            resetTokenExpiry: firebase.firestore.Timestamp.fromDate(expiry)
+                        });
+                        if (typeof emailjs !== 'undefined') {
+                            try {
+                                await emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+                                    to_email: email,
+                                    to_name: doc.data().nick || email,
+                                    reset_link: window.location.origin + window.location.pathname +
+                                        '?reset=' + resetToken + '&uid=' + doc.id,
+                                    nick: doc.data().nick || ''
+                                });
+                            } catch (emailjsErr) { console.warn('EmailJS не настроен.', emailjsErr); }
+                        }
+                        if (forgotMsg) {
+                            forgotMsg.textContent =
+                                'Если email привязан к аккаунту, ссылка для сброса пароля отправлена.';
+                            forgotMsg.className = 'modal-msg success';
+                        }
+                    } catch (err) {
+                        if (forgotMsg) { forgotMsg.textContent = 'Ошибка: ' + err.message;
+                            forgotMsg.className = 'modal-msg error'; }
+                    }
+                });
+            }
+
+            function handleResetToken() {
+                const params = new URLSearchParams(window.location.search);
+                const resetToken = params.get('reset');
+                const uid = params.get('uid');
+                if (resetToken && uid) {
+                    openAuthModal();
+                    if (forgotPasswordBlock) forgotPasswordBlock.classList.add('active');
+                    if (loginForm) loginForm.classList.remove('active');
+                    if (registerForm) registerForm.classList.remove('active');
+                    if (forgotMsg) {
+                        forgotMsg.textContent =
+                            'Токен получен. Функция установки нового пароля — обратитесь к администратору.';
+                        forgotMsg.className = 'modal-msg success';
+                    }
+                }
+            }
+            handleResetToken();
+
+            // ============ СЖАТИЕ ИЗОБРАЖЕНИЙ ДЛЯ ПОСТОВ ============
+            function compressImage(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width,
+                                height = img.height;
+                            const maxWidth = 800;
+                            if (width > maxWidth) { height = (height * maxWidth) / width;
+                                width = maxWidth; }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        };
+                        img.onerror = reject;
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // ============ ПОСТРОЕНИЕ СЕТКИ ИЗОБРАЖЕНИЙ ============
+            function buildImagesGridHTML(imageUrls, postId) {
+                if (!imageUrls || imageUrls.length === 0) return '';
+                const count = imageUrls.length;
+                let gridClass = 'img-count-1';
+                if (count === 2) gridClass = 'img-count-2';
+                else if (count === 3) gridClass = 'img-count-3';
+                else if (count === 4) gridClass = 'img-count-4';
+                else if (count > 4) gridClass = 'img-count-more';
+
+                let html = '<div class="post-images-grid ' + gridClass + '" data-post-id="' + postId + '">';
+                const visibleCount = count > 4 ? 3 : count;
+                for (let i = 0; i < visibleCount; i++) {
+                    html += '<img class="grid-img-item grid-img-' + i +
+                        '" src="' + escapeHtml(imageUrls[i]) +
+                        '" alt="фото" loading="lazy" data-img-index="' + i + '">';
+                }
+                if (count > 4) {
+                    html += '<div class="grid-more-overlay" data-img-index="3">';
+                    html += '<img src="' + escapeHtml(imageUrls[3]) + '" alt="фото" loading="lazy">';
+                    html += '<span class="grid-more-text">+' + (count - 3) + '</span>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                return html;
+            }
+
+            function escapeHtml(text) {
+                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+                return String(text).replace(/[&<>"']/g, m => map[m]);
+            }
+
+            // ============ ОБРАБОТЧИК КЛИКОВ ПО СЕТКЕ ============
+            document.addEventListener('click', function(e) {
+                const gridImg = e.target.closest('.grid-img-item');
+                const moreOverlay = e.target.closest('.grid-more-overlay');
+                if (gridImg || moreOverlay) {
+                    const grid = (gridImg || moreOverlay).closest('.post-images-grid');
+                    if (!grid) return;
+                    const allImgs = grid.querySelectorAll('.grid-img-item');
+                    const moreImg = grid.querySelector('.grid-more-overlay img');
+                    const imageUrls = [];
+                    allImgs.forEach(img => imageUrls.push(img.src));
+                    if (moreImg) {
+                        const postId = grid.getAttribute('data-post-id');
+                        const card = grid.closest('.card');
+                        if (card && card._allImageUrls) {
+                            const allUrls = card._allImageUrls;
+                            const startIndex = allImgs.length;
+                            openImageViewer(allUrls, startIndex);
+                            return;
+                        }
+                    }
+                    let clickedIndex = 0;
+                    if (gridImg) clickedIndex = parseInt(gridImg.getAttribute('data-img-index') || 0);
+                    else if (moreOverlay) clickedIndex = parseInt(moreOverlay.getAttribute('data-img-index') ||
+                        3);
+                    openImageViewer(imageUrls, clickedIndex);
+                }
+            });
+
+            // ============ ПУБЛИКАЦИИ ============
+            function createSectionHandler(config) {
+                const textInput = document.getElementById(config.textInputId);
+                const fileInput = document.getElementById(config.fileInputId);
+                const previewContainer = document.getElementById(config.previewContainerId);
+                const submitBtn = document.getElementById(config.submitBtnId);
+                const cancelBtn = document.getElementById(config.cancelBtnId);
+                const uploadStatus = document.getElementById(config.statusId);
+                const postsContainer = document.getElementById(config.postsContainerId);
+                const editingIdInput = document.getElementById(config.editingIdInputId);
+                const formTitle = document.getElementById(config.formTitleId);
+                if (!textInput || !fileInput || !previewContainer || !submitBtn || !uploadStatus || !
+                    postsContainer) return;
+
+                let editingPostId = null;
+                let existingImageUrls = [];
+                let selectedFiles = [];
+                let savedOriginalText = '';
+                let savedOriginalImageUrls = [];
+
+                function resetForm(fullReset = true) {
+                    if (fullReset) {
+                        textInput.value = '';
+                        selectedFiles = [];
+                        fileInput.value = '';
+                        existingImageUrls = [];
+                        savedOriginalText = '';
+                        savedOriginalImageUrls = [];
+                    } else {
+                        textInput.value = savedOriginalText;
+                        existingImageUrls = [...savedOriginalImageUrls];
+                        selectedFiles = [];
+                        fileInput.value = '';
+                    }
+                    editingPostId = null;
+                    if (editingIdInput) editingIdInput.value = '';
+                    if (formTitle) formTitle.textContent = 'Добавить публикацию';
+                    if (submitBtn) submitBtn.textContent = 'Опубликовать';
+                    if (cancelBtn) cancelBtn.style.display = 'none';
+                    updatePreview();
+                }
+
+                function updatePreview() {
+                    if (!previewContainer) return;
+                    previewContainer.innerHTML = '';
+                    existingImageUrls.forEach((url, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        const img = document.createElement('img');
+                        img.src = url;
+                        div.appendChild(img);
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-preview';
+                        removeBtn.innerHTML = '✕';
+                        removeBtn.addEventListener('click', (ev) => { ev.stopPropagation();
+                            existingImageUrls.splice(index, 1);
+                            updatePreview(); });
+                        div.appendChild(removeBtn);
+                        previewContainer.appendChild(div);
+                    });
+                    selectedFiles.forEach((item, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        const img = document.createElement('img');
+                        img.src = item.dataUrl;
+                        div.appendChild(img);
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-preview';
+                        removeBtn.innerHTML = '✕';
+                        removeBtn.addEventListener('click', (ev) => { ev.stopPropagation();
+                            selectedFiles.splice(index, 1);
+                            updateFileInputFromSelected();
+                            updatePreview(); });
+                        div.appendChild(removeBtn);
+                        previewContainer.appendChild(div);
+                    });
+                }
+
+                function updateFileInputFromSelected() {
+                    const dt = new DataTransfer();
+                    selectedFiles.forEach(item => dt.items.add(item.file));
+                    fileInput.files = dt.files;
+                }
+                fileInput.addEventListener('change', async function(e) {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    for (const file of files) {
+                        try { const dataUrl = await compressImage(file);
+                            selectedFiles.push({ file, dataUrl }); } catch (err) { console.error(
+                                'Ошибка сжатия:', err); }
+                    }
+                    updateFileInputFromSelected();
+                    updatePreview();
+                });
+
+                function getAllImageUrls() { return [...existingImageUrls, ...selectedFiles.map(item => item
+                        .dataUrl)]; }
+
+                submitBtn.addEventListener('click', async function() {
+                    if (!isAdmin) {
+                        uploadStatus.textContent = 'Только администратор может публиковать.';
+                        uploadStatus.style.color = '#c4203a';
+                        return;
+                    }
+                    const text = textInput.value.trim();
+                    const allUrls = getAllImageUrls();
+                    if (text === '' && allUrls.length === 0) {
+                        uploadStatus.textContent = 'Добавьте текст или изображение.';
+                        uploadStatus.style.color = '#c4203a';
+                        return;
+                    }
+                    submitBtn.disabled = true;
+                    uploadStatus.textContent = '⏳ Сохранение...';
+                    uploadStatus.style.color = '#333';
+                    try {
+                        const postData = {
+                            text,
+                            imageUrls: allUrls,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        if (editingPostId) {
+                            await config.collectionRef.doc(editingPostId).update(postData);
+                            uploadStatus.textContent = 'Изменения сохранены!';
+                        } else {
+                            postData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                            await config.collectionRef.add(postData);
+                            uploadStatus.textContent = 'Опубликовано!';
+                        }
+                        uploadStatus.style.color = '#2d6a4f';
+                        resetForm(true);
+                    } catch (error) {
+                        uploadStatus.textContent = 'Ошибка: ' + error.message;
+                        uploadStatus.style.color = '#c4203a';
+                    } finally {
+                        submitBtn.disabled = false;
+                        setTimeout(() => { if (uploadStatus.textContent.includes('Опубликовано') || uploadStatus
+                                .textContent.includes('Изменения сохранены') || uploadStatus.textContent
+                                .includes('Ошибка')) uploadStatus.textContent = ''; }, 5000);
+                    }
+                });
+
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', function() {
+                        resetForm(false);
+                    });
+                }
+
+                function populateEditForm(docId, data) {
+                    editingPostId = docId;
+                    savedOriginalText = data.text || '';
+                    savedOriginalImageUrls = data.imageUrls ? [...data.imageUrls] : [];
+                    if (editingIdInput) editingIdInput.value = docId;
+                    if (formTitle) formTitle.textContent = 'Редактировать публикацию';
+                    if (submitBtn) submitBtn.textContent = 'Сохранить изменения';
+                    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+                    textInput.value = data.text || '';
+                    existingImageUrls = data.imageUrls ? [...data.imageUrls] : [];
+                    selectedFiles = [];
+                    fileInput.value = '';
+                    updatePreview();
+                    document.getElementById(config.adminFormId)?.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                async function deletePost(docId) {
+                    if (!confirm('Удалить эту публикацию?')) return;
+                    try { await config.collectionRef.doc(docId).delete(); } catch (error) { console.error(
+                            'Ошибка удаления:', error);
+                        alert('Не удалось удалить пост.'); }
+                }
+
+                function renderPosts(querySnapshot) {
+                    if (!postsContainer) return;
+                    if (querySnapshot.empty) { postsContainer.innerHTML =
+                            '<div class="empty-message">Пока что пусто.</div>'; return; }
+                    let html = '';
+                    querySnapshot.forEach(function(doc) {
+                        const data = doc.data();
+                        const docId = doc.id;
+                        const text = data.text || '';
+                        const imageUrls = data.imageUrls || [];
+                        const createdAt = data.createdAt ? data.createdAt.toDate() : null;
+                        const timeString = createdAt ? new Intl.DateTimeFormat('ru-RU', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                        }).format(createdAt) : 'только что';
+                        html += '<div class="card" data-post-id="' + docId + '">';
+                        if (isAdmin) {
+                            html += '<button class="post-menu-btn" aria-label="Меню">⋮</button>';
+                            html += '<div class="post-dropdown">';
+                            html += '<button class="edit-post-btn">✎ Изменить пост</button>';
+                            html += '<button class="delete-post-btn delete-btn">🗑 Удалить пост</button>';
+                            html += '</div>';
+                        }
+                        if (text) html += '<div class="card-text">' + escapeHtml(text) + '</div>';
+                        html += buildImagesGridHTML(imageUrls, docId);
+                        html += '<div class="timestamp">🕒 ' + timeString + '</div>';
+                        html += '</div>';
+                    });
+                    postsContainer.innerHTML = html;
+                    const cards = postsContainer.querySelectorAll('.card');
+                    cards.forEach(card => {
+                        const docId = card.getAttribute('data-post-id');
+                        const grid = card.querySelector('.post-images-grid');
+                        if (grid) {
+                            const imgs = grid.querySelectorAll('.grid-img-item');
+                            const urls = [];
+                            imgs.forEach(img => urls.push(img.src));
+                            card._allImageUrls = urls;
+                        }
+                    });
+                    querySnapshot.forEach(function(doc) {
+                        const card = postsContainer.querySelector('.card[data-post-id="' + doc.id +
+                            '"]');
+                        if (card) {
+                            card._allImageUrls = doc.data().imageUrls || [];
+                        }
+                    });
+
+                    if (isAdmin) {
+                        cards.forEach(card => {
+                            const menuBtn = card.querySelector('.post-menu-btn');
+                            const dropdown = card.querySelector('.post-dropdown');
+                            if (!menuBtn || !dropdown) return;
+                            menuBtn.addEventListener('click', (e) => { e.stopPropagation();
+                                document.querySelectorAll('.post-dropdown.show').forEach(d => { if (
+                                        d !== dropdown) d.classList.remove('show'); });
+                                dropdown.classList.toggle('show'); });
+                            const editBtn = dropdown.querySelector('.edit-post-btn');
+                            const deleteBtn = dropdown.querySelector('.delete-post-btn');
+                            const docId = card.getAttribute('data-post-id');
+                            editBtn?.addEventListener('click', (e) => { e.stopPropagation();
+                                dropdown.classList.remove('show');
+                                config.collectionRef.doc(docId).get().then(docSnap => { if (docSnap
+                                        .exists) populateEditForm(docId, docSnap.data(
+                                        )); }); });
+                            deleteBtn?.addEventListener('click', (e) => { e.stopPropagation();
+                                dropdown.classList.remove('show');
+                                deletePost(docId); });
+                        });
+                    }
+                    document.addEventListener('click', function(event) {
+                        if (!event.target.closest('.post-menu-btn')) document.querySelectorAll(
+                            '.post-dropdown.show').forEach(d => d.classList.remove('show'));
+                    });
+                }
+                config.collectionRef.orderBy('createdAt', 'desc').onSnapshot(
+                    snapshot => renderPosts(snapshot),
+                    error => { console.error('Ошибка получения данных:', error); if (postsContainer)
+                            postsContainer.innerHTML =
+                            '<div class="empty-message">Не удалось загрузить публикации</div>'; }
+                );
+                updatePreview();
+            }
+
+            createSectionHandler({
+                collectionRef: vastaCollection,
+                textInputId: 'vastaTextInput',
+                fileInputId: 'vastaFileInput',
+                previewContainerId: 'vastaPreviewContainer',
+                submitBtnId: 'vastaSubmitBtn',
+                cancelBtnId: 'vastaCancelBtn',
+                statusId: 'vastaUploadStatus',
+                postsContainerId: 'vastaPostsContainer',
+                editingIdInputId: 'vastaEditingId',
+                formTitleId: 'vastaFormTitle',
+                adminFormId: 'vasta-admin-form'
+            });
+            createSectionHandler({
+                collectionRef: esotericaCollection,
+                textInputId: 'esotericaTextInput',
+                fileInputId: 'esotericaFileInput',
+                previewContainerId: 'esotericaPreviewContainer',
+                submitBtnId: 'esotericaSubmitBtn',
+                cancelBtnId: 'esotericaCancelBtn',
+                statusId: 'esotericaUploadStatus',
+                postsContainerId: 'esotericaPostsContainer',
+                editingIdInputId: 'esotericaEditingId',
+                formTitleId: 'esotericaFormTitle',
+                adminFormId: 'esoterica-admin-form'
+            });
+            createSectionHandler({
+                collectionRef: astrologyCollection,
+                textInputId: 'astrologyTextInput',
+                fileInputId: 'astrologyFileInput',
+                previewContainerId: 'astrologyPreviewContainer',
+                submitBtnId: 'astrologySubmitBtn',
+                cancelBtnId: 'astrologyCancelBtn',
+                statusId: 'astrologyUploadStatus',
+                postsContainerId: 'astrologyPostsContainer',
+                editingIdInputId: 'astrologyEditingId',
+                formTitleId: 'astrologyFormTitle',
+                adminFormId: 'astrology-admin-form'
+            });
+
+            // ========== PWA: УСТАНОВКА ПРИЛОЖЕНИЯ ==========
+            // ========== PWA: УСТАНОВКА ПРИЛОЖЕНИЯ (с резервной инструкцией) ==========
+            let deferredPrompt;
+            const installButton = document.getElementById('installPWAButton');
+            
+            function isPWAInstalled() {
+                return window.matchMedia('(display-mode: standalone)').matches ||
+                       (navigator.standalone === true);
+            }
+            
+            function showInstallButton() {
+                if (installButton && !isPWAInstalled()) {
+                    installButton.style.display = 'inline-flex';
+                    // Меняем текст кнопки в зависимости от платформы
+                    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+                    installButton.textContent = isIOS ? '📲 Установить (инструкция)' : '📲 Установить приложение';
+                }
+            }
+            
+            function hideInstallButton() {
+                if (installButton) installButton.style.display = 'none';
+            }
+            
+            // Перехватываем автоматическое предложение (если браузер его вызовет)
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                showInstallButton();
+            });
+            
+            if (installButton) {
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        // Автоматическая установка
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log('Результат установки:', outcome);
+                        deferredPrompt = null;
+                        hideInstallButton();
+                    } else {
+                        // Резервная инструкция
+                        const ua = navigator.userAgent.toLowerCase();
+                        const isIOS = /iphone|ipad|ipod/.test(ua);
+                        const isAndroid = /android/.test(ua);
+                        const isChrome = ua.includes('chrome') || ua.includes('crios');
+                        const isEdge = ua.includes('edg');
+                        const isSamsung = ua.includes('samsungbrowser');
+            
+                        let message = '';
+                        if (isIOS) {
+                            message = '📱 Чтобы установить приложение:\n1. Нажмите кнопку «Поделиться» (квадрат со стрелкой вверх)\n2. Выберите «На экран «Домой»»\n3. Нажмите «Добавить»';
+                        } else if (isAndroid && (isChrome || isEdge || isSamsung)) {
+                            message = '📱 Чтобы установить приложение:\n1. Нажмите на значок меню (⋮ или ⋯) в адресной строке\n2. Выберите «Установить приложение» или «Добавить на главный экран»\n3. Следуйте подсказкам на экране';
+                        } else {
+                            message = '📱 Ваш браузер поддерживает установку через меню.\nНайдите пункт «Установить» или «Добавить на главный экран» в настройках страницы.';
+                        }
+                        alert(message);
+                    }
+                });
+            }
+            
+            // При загрузке страницы показываем кнопку, если приложение не установлено
+            window.addEventListener('load', () => {
+                if (!isPWAInstalled()) {
+                    // Небольшая задержка, чтобы не перекрывать контент сразу
+                    setTimeout(showInstallButton, 800);
+                }
+            });
+
+            // ============ ИНИЦИАЛИЗАЦИЯ ============
+            updateAccountUI();
+            updateAdminUI();
+            if (isAdmin && showAdminLoginBtn) showAdminLoginBtn.style.display = 'none';
+        })();
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+              .then(() => console.log('Service Worker зарегистрирован'))
+              .catch((err) => console.error('Ошибка SW:', err));
+          });
         }
-        
-        return true;
-      });
-      
-      // Проверка победы
-      if (compiledFunctions.modeWin && compiledFunctions.modeWin(player, enemies, score)) {
-        endGame(true);
-      }
-      
-      renderer.render(scene, camera);
-    }
-
-    function endGame(win = false) {
-      gameRunning = false;
-      clearInterval(timerInterval);
-      document.getElementById('gameOver').style.display = 'flex';
-      document.getElementById('gameOverScore').textContent = '🏆 ' + score;
-      document.getElementById('gameOverTitle').textContent = win ? 'Победа!' : 'Поражение';
-    }
-
-    window.restartGame = () => {
-      clearInterval(timerInterval);
-      while(scene.children.length > 0) scene.remove(scene.children[0]);
-      enemies = []; bullets = [];
-      document.getElementById('gameOver').style.display = 'none';
-      initGame();
-    };
-
-    // ========== ИНИЦИАЛИЗАЦИЯ ==========
-    loadData();
-    
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-  </script>
+    </script>
 </body>
 </html>
