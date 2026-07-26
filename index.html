@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=yes">
   <title>Clash-Of-MAS</title>
   <meta name="description" content="Пошаговая стратегия Clash-Of-MAS — покупай персонажей, расставляй на поле и побеждай!">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" sizes="72x72" href="icon-72.png">
+  <link rel="icon" sizes="96x96" href="icon-96.png">
+  <link rel="icon" sizes="128x128" href="icon-128.png">
+  <link rel="icon" sizes="144x144" href="icon-144.png">
+  <link rel="icon" sizes="152x152" href="icon-152.png">
+  <link rel="icon" sizes="192x192" href="icon-192.png">
+  <link rel="icon" sizes="384x384" href="icon-384.png">
+  <link rel="icon" sizes="512x512" href="icon-512.png">
+  <meta name="theme-color" content="#1a1a2e">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -461,14 +471,11 @@
 <script>
 // Автоопределение платформы
 const isYandexGames = typeof YaGames !== 'undefined';
-console.log('🎮 Платформа:', isYandexGames ? 'Яндекс Игры' : 'GitHub Pages');
+const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+console.log('🎮 Среда:', isYandexGames ? 'Яндекс Игры' : isLocal ? 'Локально' : 'Продакшн');
 
-// Firebase инициализация (работает на обеих платформах)
-let db = null;
-let dbRef = null;
-let dbSet = null;
-let dbOnValue = null;
-let dbRemove = null;
+// Firebase (уже настроен в твоём проекте)
+let db = null, dbRef = null, dbSet = null, dbOnValue = null, dbRemove = null;
 
 async function initFirebase() {
   try {
@@ -487,14 +494,14 @@ async function initFirebase() {
     
     const app = initializeApp(firebaseConfig);
     db = getDatabase(app);
-    dbRef = ref;
-    dbSet = set;
-    dbOnValue = onValue;
-    dbRemove = remove;
+    dbRef = ref; dbSet = set; dbOnValue = onValue; dbRemove = remove;
     console.log('✅ Firebase готов');
-  } catch(e) {
-    console.log('⚠️ Firebase недоступен (PvP не работает)');
-  }
+  } catch(e) { console.log('⚠️ Firebase офлайн'); }
+}
+
+// Service Worker
+if ('serviceWorker' in navigator && !isYandexGames) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 // Основная игра
@@ -523,8 +530,7 @@ function initGrid(){
 }
 
 function calculateHighlights(row,col){
-  const hl=[],cell=grid[row][col];
-  if(!cell||!cell.unit)return hl;
+  const hl=[],cell=grid[row][col];if(!cell||!cell.unit)return hl;
   const dir=row>=3?-1:1;
   for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;for(let c=Math.max(0,col-Math.floor(r/2));c<=Math.min(COLS-1,col+Math.floor(r/2));c++){const tc=grid[tr]?grid[tr][c]:null;if(!tc)continue;if(tc.unit){if(tr<3&&cell.damage>0)hl.push({row:tr,col:c,color:'rgba(255,40,40,0.6)',text:'-'+cell.damage});else if(tr>=3)hl.push({row:tr,col:c,color:'rgba(255,255,0,0.5)',text:''})}else hl.push({row:tr,col:c,color:'rgba(255,255,0,0.3)',text:''})}}
   if(cell.heal>0){for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){const tc=grid[tr]?grid[tr][c]:null;if(tc&&tc.unit&&tr>=3)hl.push({row:tr,col:c,color:'rgba(50,100,255,0.6)',text:'+'+cell.heal})}}}
@@ -618,13 +624,11 @@ function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 function startPvP(){
   if(!db){alert('PvP требует подключения к интернету');return}
   document.getElementById('pvp-waiting').classList.add('active');
-  const roomRef=dbRef(db,'pvp_queue/'+playerId);
-  dbSet(roomRef,{playerId,status:'waiting',timestamp:Date.now()});
-  const queueRef=dbRef(db,'pvp_queue');
-  pvpListener=dbOnValue(queueRef,(snapshot)=>{
+  dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId,status:'waiting',timestamp:Date.now()});
+  pvpListener=dbOnValue(dbRef(db,'pvp_queue'),(snapshot)=>{
     const data=snapshot.val();if(!data)return;
     const players=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
-    if(players.length>0){startPvPGame(players[0].playerId)}
+    if(players.length>0) startPvPGame(players[0].playerId);
   });
   setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){cancelPvP();alert('Соперник не найден')}},30000);
 }
@@ -634,7 +638,6 @@ function startPvPGame(opponentId){
   document.getElementById('pvp-waiting').classList.remove('active');
   dbRemove(dbRef(db,'pvp_queue/'+playerId));
   dbRemove(dbRef(db,'pvp_queue/'+opponentId));
-  console.log('PvP: соперник найден!');
   startGame();
 }
 
@@ -648,14 +651,11 @@ function startGame(){
   lobby.style.display='none';lobby.classList.remove('active');
   gameScreen.classList.add('active');
   elixir=10;grid.length=0;
-  selectedUnitRow=-1;selectedUnitCol=-1;
-  highlightedCells=[];placementHighlights=[];
+  selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
   startPlacementPhase();resizeCanvas();
-  if(gameLoopId)cancelAnimationFrame(gameLoopId);
-  gameLoop();
+  if(gameLoopId)cancelAnimationFrame(gameLoopId);gameLoop();
 }
 
-// Обработчики
 document.getElementById('play-button').onclick=()=>{if(currentMode==='classic')startGame();else startPvP()};
 document.getElementById('mode-button').onclick=()=>{document.getElementById('mode-modal').classList.add('active')};
 document.getElementById('mode-classic').onclick=()=>{currentMode='classic';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='⚔️ КЛАССИКА';document.getElementById('mode-button').style.borderColor='rgba(77,150,255,0.6)'};
@@ -679,7 +679,6 @@ document.getElementById('menu-toggle').onclick=()=>{const m=document.getElementB
 document.getElementById('settings-overlay').onclick=()=>{document.getElementById('settings-menu').classList.remove('active');document.getElementById('settings-overlay').classList.remove('active');document.getElementById('menu-toggle').classList.remove('active')};
 window.onresize=()=>{if(gameScreen.classList.contains('active'))resizeCanvas()};
 
-// Запуск
 async function boot(){
   await initFirebase();
   let progress=0;
