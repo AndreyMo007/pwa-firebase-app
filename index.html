@@ -207,9 +207,11 @@ function processTurn(){
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
+// ====== ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ ======
 function syncGridToFB(){
   if(!pvpRoom)return;
-  const gd=grid.map(r=>r.map(c=>({unit:c.unit,hp:c.hp,maxHp:c.maxHp,damage:c.damage,attackRange:c.attackRange,heal:c.heal,hasMovedThisRound:c.hasMovedThisRound,cardData:c.cardData})));
+  const gd=[];
+  for(let r=0;r<ROWS;r++){gd[r]=[];for(let c=0;c<COLS;c++){const cell=grid[r][c];gd[r][c]={unit:cell.unit,hp:cell.hp,maxHp:cell.maxHp,damage:cell.damage,attackRange:cell.attackRange,heal:cell.heal,hasMovedThisRound:cell.hasMovedThisRound,cardData:cell.cardData}}}
   dbSet(dbRef(db,'rooms/'+pvpRoom+'/grid'),gd);
 }
 function syncStateToFB(){
@@ -220,95 +222,61 @@ function loadFromFB(){
   if(!pvpRoom)return;
   dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/grid'),(snap)=>{
     const d=snap.val();if(!d)return;
-    for(let r=0;r<ROWS;r++){for(let c=0;c<COLS;c++){if(d[r]&&d[r][c]&&grid[r]&&grid[r][c]){
+    for(let r=0;r<ROWS;r++){if(!d[r])continue;for(let c=0;c<COLS;c++){if(!d[r][c]||!grid[r]||!grid[r][c])continue;
       grid[r][c].unit=d[r][c].unit;grid[r][c].hp=d[r][c].hp;grid[r][c].maxHp=d[r][c].maxHp;
       grid[r][c].damage=d[r][c].damage;grid[r][c].attackRange=d[r][c].attackRange;
       grid[r][c].heal=d[r][c].heal;grid[r][c].hasMovedThisRound=d[r][c].hasMovedThisRound;
       grid[r][c].cardData=d[r][c].cardData;
-    }}}
+    }}
   });
   dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
     const s=snap.val();if(s&&s.currentPlayer!==playerId){gamePhase=s.phase;isPlayerTurn=false;updatePhaseDisplay();}
   });
 }
 
-// ====== ИСПРАВЛЕННЫЙ PVP: ОБА ИГРОКА ЗАХОДЯТ ======
+// ====== PVP ЗАПУСК ======
 function startPvP(){
   if(!db){alert('PvP требует подключения к интернету');return}
   document.getElementById('pvp-waiting').classList.add('active');
-  
-  // Добавляем себя в очередь
   dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId,status:'waiting',timestamp:Date.now()});
-  
-  // Слушаем очередь — когда найдётся второй игрок
   pvpQueueUnsub=dbOnValue(dbRef(db,'pvp_queue'),(snap)=>{
     const data=snap.val();if(!data)return;
     const waitingPlayers=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
     if(waitingPlayers.length>0&&!pvpRoom){
       const opponent=waitingPlayers[0];
-      pvpRoom='room_'+Date.now();
-      pvpOpponentId=opponent.playerId;
-      pvpIsHost=true;
-      
-      // Удаляем обоих из очереди
-      dbRemove(dbRef(db,'pvp_queue/'+playerId));
-      dbRemove(dbRef(db,'pvp_queue/'+opponent.playerId));
+      pvpRoom='room_'+Date.now();pvpOpponentId=opponent.playerId;pvpIsHost=true;
+      dbRemove(dbRef(db,'pvp_queue/'+playerId));dbRemove(dbRef(db,'pvp_queue/'+opponent.playerId));
       if(pvpQueueUnsub){pvpQueueUnsub();pvpQueueUnsub=null;}
-      
-      // Отправляем сигнал гостю
+      initGrid(true);syncGridToFB();syncStateToFB();
       dbSet(dbRef(db,'pvp_signals/'+opponent.playerId),{roomId:pvpRoom,hostId:playerId});
-      
-      // Инициализируем и запускаем
-      initGrid(true);
-      syncGridToFB();
-      syncStateToFB();
       document.getElementById('pvp-waiting').classList.remove('active');
-      loadFromFB();
-      startGame();
+      loadFromFB();startGame();
     }
   });
-  
-  // Слушаем сигнал от хоста (если этот игрок - гость)
   pvpSignalUnsub=dbOnValue(dbRef(db,'pvp_signals/'+playerId),(snap)=>{
     const signal=snap.val();
     if(signal&&signal.roomId&&!pvpRoom){
-      pvpRoom=signal.roomId;
-      pvpOpponentId=signal.hostId;
-      pvpIsHost=false;
-      
-      // Удаляем сигнал
+      pvpRoom=signal.roomId;pvpOpponentId=signal.hostId;pvpIsHost=false;
       dbRemove(dbRef(db,'pvp_signals/'+playerId));
       if(pvpSignalUnsub){pvpSignalUnsub();pvpSignalUnsub=null;}
-      
-      // Инициализируем и запускаем
       initGrid(true);
       document.getElementById('pvp-waiting').classList.remove('active');
-      loadFromFB();
-      startGame();
+      loadFromFB();startGame();
     }
   });
-  
-  // Таймаут
-  setTimeout(()=>{
-    if(document.getElementById('pvp-waiting').classList.contains('active')){
-      cancelPvP();
-      alert('Соперник не найден');
-    }
-  },30000);
+  setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){cancelPvP();alert('Соперник не найден')}},30000);
 }
 
 function cancelPvP(){
   document.getElementById('pvp-waiting').classList.remove('active');
   if(pvpQueueUnsub){pvpQueueUnsub();pvpQueueUnsub=null;}
   if(pvpSignalUnsub){pvpSignalUnsub();pvpSignalUnsub=null;}
-  dbRemove(dbRef(db,'pvp_queue/'+playerId));
-  dbRemove(dbRef(db,'pvp_signals/'+playerId));
+  dbRemove(dbRef(db,'pvp_queue/'+playerId));dbRemove(dbRef(db,'pvp_signals/'+playerId));
 }
 
 function startGame(){
   lobby.style.display='none';lobby.classList.remove('active');gameScreen.classList.add('active');
-  elixir=10;
-  selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
+  elixir=10;selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
   startPlacementPhase();setTimeout(resizeCanvas,300);
   if(gameLoopId)cancelAnimationFrame(gameLoopId);gameLoop();
 }
