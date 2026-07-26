@@ -4,561 +4,142 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=yes">
   <title>Clash-Of-MAS</title>
-  <meta name="description" content="Пошаговая стратегия Clash-Of-MAS — покупай персонажей, расставляй на поле и побеждай!">
+  <meta name="description" content="Пошаговая стратегия Clash-Of-MAS">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" sizes="72x72" href="icon-72.png">
-  <link rel="icon" sizes="96x96" href="icon-96.png">
-  <link rel="icon" sizes="128x128" href="icon-128.png">
-  <link rel="icon" sizes="144x144" href="icon-144.png">
-  <link rel="icon" sizes="152x152" href="icon-152.png">
   <link rel="icon" sizes="192x192" href="icon-192.png">
-  <link rel="icon" sizes="384x384" href="icon-384.png">
-  <link rel="icon" sizes="512x512" href="icon-512.png">
   <meta name="theme-color" content="#1a1a2e">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #000;
-      overflow: hidden;
-      touch-action: none;
-      user-select: none;
-      -webkit-user-select: none;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      height: 100dvh;
-      width: 100vw;
-      font-family: 'Arial', sans-serif;
-    }
-    #game-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      max-width: 100%;
-      background: #1a1a2e;
-      overflow: hidden;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-    }
-    @media (min-width: 768px) {
-      #game-container { max-width: 500px; max-height: 100vh; aspect-ratio: 9/16; }
-    }
-    #preloader {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
-      z-index: 100; transition: opacity 0.8s ease;
-      background: #0a0a1e;
-    }
+    body { background: #000; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; height: 100dvh; width: 100vw; font-family: 'Arial', sans-serif; }
+    #game-container { position: relative; width: 100%; height: 100%; max-width: 100%; background: #1a1a2e; overflow: hidden; margin: 0 auto; display: flex; flex-direction: column; }
+    @media (min-width: 768px) { #game-container { max-width: 500px; max-height: 100vh; aspect-ratio: 9/16; } }
+    #preloader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; transition: opacity 0.8s ease; background: #0a0a1e; }
     #preloader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .logo-container { margin-bottom: 30px; animation: floatVertical 3s ease-in-out infinite; }
     @keyframes floatVertical { 0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)} }
-    #game-title-splash {
-      font-size: min(10vw, 42px); font-weight: bold; color: white;
-      text-shadow: 0 0 30px rgba(77,150,255,0.8); letter-spacing: 6px;
-      margin-bottom: 40px; text-align: center;
-    }
+    #game-title-splash { font-size: min(10vw, 42px); font-weight: bold; color: white; text-shadow: 0 0 30px rgba(77,150,255,0.8); letter-spacing: 6px; margin-bottom: 40px; text-align: center; }
     .loading-block { width: 80%; max-width: 300px; display: flex; flex-direction: column; align-items: center; }
-    #loading-bar-container {
-      width: 100%; height: 10px; background: rgba(255,255,255,0.15);
-      border-radius: 20px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2);
-    }
-    #loading-bar {
-      width: 0%; height: 100%;
-      background: linear-gradient(90deg,#4d96ff,#6bcb77,#ffd93d,#ff6b6b);
-      background-size: 300% 100%; animation: loadingShine 2s ease infinite;
-      border-radius: 20px; transition: width 0.3s ease;
-    }
+    #loading-bar-container { width: 100%; height: 10px; background: rgba(255,255,255,0.15); border-radius: 20px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); }
+    #loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg,#4d96ff,#6bcb77,#ffd93d,#ff6b6b); background-size: 300% 100%; animation: loadingShine 2s ease infinite; border-radius: 20px; transition: width 0.3s ease; }
     @keyframes loadingShine { 0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%} }
     #loading-text { color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 15px; letter-spacing: 4px; }
     #loading-percentage { color: #ffd93d; font-size: 28px; margin-top: 8px; font-weight: bold; }
-    
-    #lobby {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      display: none; z-index: 10;
-      background: linear-gradient(180deg,#1a1a2e 0%,#16213e 100%);
-      flex-direction: column;
-    }
+    #lobby { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 10; background: linear-gradient(180deg,#1a1a2e 0%,#16213e 100%); flex-direction: column; }
     #lobby.active { display: flex; }
-    #top-panel {
-      width: 100%; display: flex;
-      background: rgba(0,0,0,0.5);
-      border-bottom: 1px solid rgba(77,150,255,0.3);
-      flex-shrink: 0; height: 55px;
-    }
-    #profile-button, #trophy-button {
-      background: rgba(77,150,255,0.05); border: none;
-      border-right: 1px solid rgba(255,255,255,0.1);
-      cursor: pointer; color: rgba(255,255,255,0.7);
-      flex-shrink: 0; display: flex;
-      flex-direction: column; align-items: center; justify-content: center;
-    }
-    #profile-button { width: 55px; height: 55px; gap: 2px; }
-    .profile-nickname { font-size: 9px; font-weight: bold; }
-    .profile-icon { font-size: 18px; }
-    #trophy-button { width: 120px; height: 55px; gap: 3px; padding: 5px; }
-    .trophy-top { display: flex; align-items: center; gap: 5px; }
-    .trophy-icon { font-size: 16px; }
-    .trophy-count { color: #ffd93d; font-size: 16px; font-weight: bold; }
-    .trophy-bar-container { width: 80%; height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
-    .trophy-bar-fill { height: 100%; background: linear-gradient(90deg,#ffd93d,#ffaa00); border-radius: 3px; width: 0%; }
+    #top-panel { width: 100%; display: flex; background: rgba(0,0,0,0.5); border-bottom: 1px solid rgba(77,150,255,0.3); flex-shrink: 0; height: 55px; }
+    #profile-button, #trophy-button { background: rgba(77,150,255,0.05); border: none; border-right: 1px solid rgba(255,255,255,0.1); cursor: pointer; color: rgba(255,255,255,0.7); flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #profile-button { width: 55px; height: 55px; gap: 2px; } .profile-nickname { font-size: 9px; font-weight: bold; } .profile-icon { font-size: 18px; }
+    #trophy-button { width: 120px; height: 55px; gap: 3px; padding: 5px; } .trophy-top { display: flex; align-items: center; gap: 5px; } .trophy-icon { font-size: 16px; } .trophy-count { color: #ffd93d; font-size: 16px; font-weight: bold; }
+    .trophy-bar-container { width: 80%; height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; } .trophy-bar-fill { height: 100%; background: linear-gradient(90deg,#ffd93d,#ffaa00); border-radius: 3px; width: 0%; }
     #top-spacer { flex: 1; }
-    #menu-toggle {
-      width: 55px; height: 55px;
-      background: rgba(77,150,255,0.05); border: none;
-      cursor: pointer; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 5px; padding: 14px;
-      color: rgba(255,255,255,0.7); z-index: 30; flex-shrink: 0;
-    }
+    #menu-toggle { width: 55px; height: 55px; background: rgba(77,150,255,0.05); border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 14px; color: rgba(255,255,255,0.7); z-index: 30; flex-shrink: 0; }
     .menu-bar { width: 65%; height: 3px; background: rgba(255,255,255,0.7); border-radius: 2px; }
-    #menu-toggle.active .menu-bar:nth-child(1) { transform: rotate(45deg) translate(5px,5px); }
-    #menu-toggle.active .menu-bar:nth-child(2) { opacity: 0; }
-    #menu-toggle.active .menu-bar:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
-    #settings-menu {
-      position: absolute; top: 0; right: -280px;
-      width: 260px; height: 100%;
-      background: rgba(10,10,30,0.98); z-index: 25;
-      transition: right 0.4s ease; backdrop-filter: blur(20px);
-      border-left: 2px solid rgba(77,150,255,0.4);
-      display: flex; flex-direction: column; padding-top: 60px;
-    }
-    #settings-menu.active { right: 0; }
-    #settings-overlay {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6); z-index: 24; display: none;
-    }
-    #settings-overlay.active { display: block; }
-    .settings-menu-title {
-      color: #ffd93d; font-size: 20px; font-weight: bold;
-      text-align: center; padding: 18px;
-      border-bottom: 1px solid rgba(77,150,255,0.3);
-    }
-    .settings-item {
-      padding: 15px 22px; color: white; font-size: 14px;
-      cursor: pointer; transition: all 0.3s ease;
-      display: flex; align-items: center; gap: 10px;
-      border-left: 3px solid transparent;
-    }
-    .settings-item:hover { background: rgba(77,150,255,0.2); border-left-color: #ffd93d; }
-    .settings-item-dot { width: 8px; height: 8px; background: rgba(255,255,255,0.5); border-radius: 50%; }
-    
+    #menu-toggle.active .menu-bar:nth-child(1) { transform: rotate(45deg) translate(5px,5px); } #menu-toggle.active .menu-bar:nth-child(2) { opacity: 0; } #menu-toggle.active .menu-bar:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
+    #settings-menu { position: absolute; top: 0; right: -280px; width: 260px; height: 100%; background: rgba(10,10,30,0.98); z-index: 25; transition: right 0.4s ease; backdrop-filter: blur(20px); border-left: 2px solid rgba(77,150,255,0.4); display: flex; flex-direction: column; padding-top: 60px; }
+    #settings-menu.active { right: 0; } #settings-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 24; display: none; } #settings-overlay.active { display: block; }
+    .settings-menu-title { color: #ffd93d; font-size: 20px; font-weight: bold; text-align: center; padding: 18px; border-bottom: 1px solid rgba(77,150,255,0.3); }
+    .settings-item { padding: 15px 22px; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; } .settings-item:hover { background: rgba(77,150,255,0.2); border-left-color: #ffd93d; } .settings-item-dot { width: 8px; height: 8px; background: rgba(255,255,255,0.5); border-radius: 50%; }
     #lobby-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px; overflow-y: auto; }
     #home-page { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; text-align: center; }
-    #cards-page { display: none; width: 100%; }
-    #cards-page.active { display: block; }
-    .page-title { font-size: 20px; font-weight: bold; color: #ffd93d; text-align: center; margin-bottom: 14px; }
-    .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 5px; }
-    
-    #mode-modal {
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center; align-items: center;
-      z-index: 200;
-    }
-    #mode-modal.active { display: flex; }
-    .mode-modal-content {
-      background: linear-gradient(180deg,#1a1a2e,#16213e);
-      border: 2px solid rgba(77,150,255,0.4);
-      border-radius: 16px;
-      padding: 30px 20px;
-      display: flex; flex-direction: column;
-      align-items: center; gap: 20px;
-      width: 280px;
-    }
+    #cards-page { display: none; width: 100%; } #cards-page.active { display: block; } .page-title { font-size: 20px; font-weight: bold; color: #ffd93d; text-align: center; margin-bottom: 14px; } .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 5px; }
+    #mode-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; } #mode-modal.active { display: flex; }
+    .mode-modal-content { background: linear-gradient(180deg,#1a1a2e,#16213e); border: 2px solid rgba(77,150,255,0.4); border-radius: 16px; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 280px; }
     .mode-modal-title { color: #ffd93d; font-size: 22px; font-weight: bold; }
-    .mode-btn-option {
-      width: 200px; height: 55px;
-      background: linear-gradient(135deg,#4d96ff,#6bcb77);
-      border: none; border-radius: 30px;
-      color: white; font-size: 18px; font-weight: bold;
-      cursor: pointer; letter-spacing: 2px;
-      transition: all 0.2s ease;
-    }
-    .mode-btn-option.pvp { background: linear-gradient(135deg,#ff6b6b,#ffd93d); }
-    .mode-btn-option:hover { transform: scale(1.05); }
-    .mode-btn-close {
-      margin-top: 10px;
-      background: transparent;
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-      padding: 8px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    
-    #pvp-waiting {
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.9);
-      display: none;
-      justify-content: center; align-items: center;
-      z-index: 150;
-      flex-direction: column;
-    }
-    #pvp-waiting.active { display: flex; }
-    .pvp-waiting-content { text-align: center; color: white; }
-    .pvp-waiting-spinner {
-      width: 60px; height: 60px;
-      border: 4px solid rgba(255,255,255,0.2);
-      border-top-color: #ffd93d;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .pvp-waiting-text { font-size: 18px; color: #ffd93d; margin-bottom: 15px; }
-    .pvp-waiting-cancel {
-      background: rgba(255,107,107,0.9);
-      border: none; color: white;
-      padding: 10px 25px; border-radius: 20px;
-      cursor: pointer; font-size: 14px; margin-top: 20px;
-    }
-    
-    .card-info {
-      background: rgba(0,0,0,0.5);
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      display: flex; flex-direction: column;
-    }
-    .card-info-top-bar {
-      display: flex; align-items: stretch;
-      padding: 0; gap: 0;
-      min-height: 38px;
-      border-radius: 6px 6px 0 0;
-    }
-    .card-info-stats-left {
-      display: flex; flex-direction: column;
-      gap: 0;
-      flex-shrink: 0;
-      border-radius: 6px 0 0 0;
-      overflow: hidden;
-      border-right: 2px solid #555;
-    }
-    .card-info-stat {
-      padding: 3px 6px; font-size: 9px;
-      font-weight: bold; text-align: center;
-      min-width: 28px;
-      display: flex; align-items: center; justify-content: center;
-      background: transparent;
-      color: #fff;
-      border-bottom: 2px solid #555;
-    }
-    .card-info-stat:last-child { border-bottom: none; }
-    .card-info-stat.hp { color: #ff6b6b; }
-    .card-info-stat.dmg { color: #ffd93d; }
-    .card-info-name-area {
-      flex: 1; text-align: center;
-      display: flex; align-items: center; justify-content: center;
-      border-right: 2px solid #555;
-    }
-    .card-info-name { font-weight: bold; font-size: 11px; color: #fff; line-height: 1.1; }
-    .card-info-cost {
-      background: transparent; color: #d459ff;
-      padding: 4px 8px; font-size: 10px; font-weight: bold;
-      flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 0 6px 0 0;
-    }
-    .card-info-image {
-      aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 36px; background: rgba(255,255,255,0.05);
-      padding: 8px;
-    }
-    
+    .mode-btn-option { width: 200px; height: 55px; background: linear-gradient(135deg,#4d96ff,#6bcb77); border: none; border-radius: 30px; color: white; font-size: 18px; font-weight: bold; cursor: pointer; letter-spacing: 2px; } .mode-btn-option.pvp { background: linear-gradient(135deg,#ff6b6b,#ffd93d); } .mode-btn-option:hover { transform: scale(1.05); }
+    .mode-btn-close { margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+    #pvp-waiting { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 150; flex-direction: column; } #pvp-waiting.active { display: flex; }
+    .pvp-waiting-content { text-align: center; color: white; } .pvp-waiting-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #ffd93d; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; } @keyframes spin { to { transform: rotate(360deg); } }
+    .pvp-waiting-text { font-size: 18px; color: #ffd93d; margin-bottom: 15px; } .pvp-waiting-cancel { background: rgba(255,107,107,0.9); border: none; color: white; padding: 10px 25px; border-radius: 20px; cursor: pointer; font-size: 14px; margin-top: 20px; }
+    .card-info { background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); border-radius: 8px; display: flex; flex-direction: column; }
+    .card-info-top-bar { display: flex; align-items: stretch; padding: 0; gap: 0; min-height: 38px; border-radius: 6px 6px 0 0; }
+    .card-info-stats-left { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; border-radius: 6px 0 0 0; overflow: hidden; border-right: 2px solid #555; }
+    .card-info-stat { padding: 3px 6px; font-size: 9px; font-weight: bold; text-align: center; min-width: 28px; display: flex; align-items: center; justify-content: center; background: transparent; color: #fff; border-bottom: 2px solid #555; } .card-info-stat:last-child { border-bottom: none; } .card-info-stat.hp { color: #ff6b6b; } .card-info-stat.dmg { color: #ffd93d; }
+    .card-info-name-area { flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; border-right: 2px solid #555; } .card-info-name { font-weight: bold; font-size: 11px; color: #fff; }
+    .card-info-cost { background: transparent; color: #d459ff; padding: 4px 8px; font-size: 10px; font-weight: bold; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 0 6px 0 0; }
+    .card-info-image { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 36px; background: rgba(255,255,255,0.05); padding: 8px; }
     .game-title-lobby { font-size: 30px; font-weight: bold; color: white; text-shadow: 0 0 18px rgba(77,150,255,0.6); }
-    .play-btn {
-      width: 190px; height: 58px;
-      background: linear-gradient(135deg,#4d96ff,#6bcb77);
-      border: none; border-radius: 32px;
-      color: white; font-size: 22px; font-weight: bold;
-      cursor: pointer; letter-spacing: 3px;
-      box-shadow: 0 6px 22px rgba(77,150,255,0.4);
-      text-transform: uppercase; position: relative; overflow: hidden;
-    }
-    .play-btn::before {
-      content: ''; position: absolute; top: -50%; left: -50%;
-      width: 200%; height: 200%;
-      background: linear-gradient(45deg,transparent,rgba(255,255,255,0.2),transparent);
-      transform: rotate(45deg); animation: btnShine 3s infinite;
-    }
-    @keyframes btnShine { 0%{transform:translateX(-100%) rotate(45deg)}100%{transform:translateX(100%) rotate(45deg)} }
-    .mode-btn {
-      width: 170px; height: 46px;
-      background: rgba(255,255,255,0.1);
-      border: 2px solid rgba(77,150,255,0.4);
-      border-radius: 25px; color: white;
-      font-size: 16px; cursor: pointer; letter-spacing: 2px;
-    }
-    
-    #bottom-nav {
-      width: 100%; display: flex;
-      background: rgba(0,0,0,0.5);
-      border-top: 1px solid rgba(77,150,255,0.3);
-      flex-shrink: 0;
-    }
-    .nav-btn {
-      flex: 1; height: 58px;
-      background: rgba(77,150,255,0.05); border: none;
-      border-right: 1px solid rgba(255,255,255,0.1);
-      cursor: pointer; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 2px; font-size: 19px;
-      color: rgba(255,255,255,0.7); padding: 5px;
-    }
-    .nav-btn:last-child { border-right: none; }
-    .nav-btn.active { background: rgba(77,150,255,0.3); color: #ffd93d; box-shadow: inset 0 3px 0 #ffd93d; }
-    .nav-btn::after { content: attr(data-label); font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
-    .cards-icon { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
-    .card-mini { width: 6px; border-radius: 2px 2px 0 0; }
-    .card-mini:nth-child(1) { height: 11px; background: #ff6b6b; }
-    .card-mini:nth-child(2) { height: 15px; background: #4d96ff; }
-    .card-mini:nth-child(3) { height: 13px; background: #6bcb77; }
-    
-    #game-screen {
-      position: absolute; top: 0; left: 0;
-      width: 100%; height: 100%;
-      display: none; z-index: 5;
-      background: #0d1117;
-      flex-direction: column; align-items: center;
-      justify-content: flex-start; padding-top: 38px;
-      overflow: hidden;
-    }
-    #game-screen.active { display: flex; }
+    .play-btn { width: 190px; height: 58px; background: linear-gradient(135deg,#4d96ff,#6bcb77); border: none; border-radius: 32px; color: white; font-size: 22px; font-weight: bold; cursor: pointer; letter-spacing: 3px; box-shadow: 0 6px 22px rgba(77,150,255,0.4); text-transform: uppercase; position: relative; overflow: hidden; }
+    .play-btn::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg,transparent,rgba(255,255,255,0.2),transparent); transform: rotate(45deg); animation: btnShine 3s infinite; } @keyframes btnShine { 0%{transform:translateX(-100%) rotate(45deg)}100%{transform:translateX(100%) rotate(45deg)} }
+    .mode-btn { width: 170px; height: 46px; background: rgba(255,255,255,0.1); border: 2px solid rgba(77,150,255,0.4); border-radius: 25px; color: white; font-size: 16px; cursor: pointer; letter-spacing: 2px; }
+    #bottom-nav { width: 100%; display: flex; background: rgba(0,0,0,0.5); border-top: 1px solid rgba(77,150,255,0.3); flex-shrink: 0; }
+    .nav-btn { flex: 1; height: 58px; background: rgba(77,150,255,0.05); border: none; border-right: 1px solid rgba(255,255,255,0.1); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 19px; color: rgba(255,255,255,0.7); padding: 5px; } .nav-btn:last-child { border-right: none; } .nav-btn.active { background: rgba(77,150,255,0.3); color: #ffd93d; box-shadow: inset 0 3px 0 #ffd93d; } .nav-btn::after { content: attr(data-label); font-size: 8px; font-weight: bold; }
+    .cards-icon { display: flex; gap: 2px; align-items: flex-end; height: 16px; } .card-mini { width: 6px; border-radius: 2px 2px 0 0; } .card-mini:nth-child(1) { height: 11px; background: #ff6b6b; } .card-mini:nth-child(2) { height: 15px; background: #4d96ff; } .card-mini:nth-child(3) { height: 13px; background: #6bcb77; }
+    #game-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 5; background: #0d1117; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 38px; overflow: hidden; } #game-screen.active { display: flex; }
     #gameCanvas { display: block; border: 2px solid rgba(255,255,255,0.2); border-radius: 6px; flex-shrink: 0; }
-    .game-ui {
-      position: absolute; top: 5px; left: 0;
-      width: 100%; padding: 0 10px;
-      display: flex; justify-content: center; gap: 8px;
-      pointer-events: none; z-index: 20;
-    }
-    .game-phase, .game-timer {
-      background: rgba(0,0,0,0.7); padding: 6px 12px;
-      border-radius: 16px; font-size: 12px; font-weight: bold;
-    }
-    .game-phase { color: #ffd93d; }
-    .game-timer { color: #ff6b6b; min-width: 42px; text-align: center; }
-    .elixir-display {
-      position: absolute; top: 5px; right: 10px;
-      background: rgba(0,0,0,0.7); color: #d459ff;
-      padding: 6px 12px; border-radius: 16px;
-      font-size: 14px; font-weight: bold; z-index: 20; pointer-events: none;
-    }
-    .back-to-lobby {
-      position: absolute; top: 5px; left: 10px;
-      padding: 6px 12px; background: rgba(255,107,107,0.9);
-      color: white; border: none; border-radius: 16px;
-      cursor: pointer; z-index: 30; font-weight: bold; font-size: 11px;
-    }
-    #cards-area { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 5px 5px; background: rgba(0,0,0,0.4); }
-    .cards-label { color: rgba(255,255,255,0.7); font-size: 9px; text-align: center; letter-spacing: 2px; font-weight: bold; }
-    .cards-row { display: flex; gap: 4px; justify-content: center; }
-    .card-slot {
-      width: 48px; height: 60px;
-      background: rgba(255,255,255,0.05);
-      border: 2px solid rgba(255,255,255,0.15);
-      border-radius: 8px; cursor: pointer;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      position: relative; color: white; font-size: 20px;
-    }
-    .card-slot.empty { background: rgba(0,0,0,0.3); border-style: dashed; }
-    .card-slot:hover { border-color: #ffd93d; transform: translateY(-2px); }
-    .card-slot.purchased { border-color: #6bcb77; background: rgba(107,203,119,0.15); }
-    .card-cost {
-      position: absolute; top: -6px; right: -6px;
-      background: #d459ff; color: white;
-      width: 17px; height: 17px; border-radius: 50%;
-      font-size: 9px; font-weight: bold;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .card-emoji { font-size: 22px; }
-    .card-name { font-size: 7px; text-align: center; color: rgba(255,255,255,0.8); margin-top: 1px; }
-    .buy-btn {
-      position: absolute; bottom: -5px;
-      background: linear-gradient(135deg,#ffd93d,#ffaa00);
-      color: #000; border: none; border-radius: 6px;
-      padding: 1px 6px; font-size: 8px; font-weight: bold; cursor: pointer;
-    }
+    .game-ui { position: absolute; top: 5px; left: 0; width: 100%; padding: 0 10px; display: flex; justify-content: center; gap: 8px; pointer-events: none; z-index: 20; }
+    .game-phase, .game-timer { background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; } .game-phase { color: #ffd93d; } .game-timer { color: #ff6b6b; min-width: 42px; text-align: center; }
+    .elixir-display { position: absolute; top: 5px; right: 10px; background: rgba(0,0,0,0.7); color: #d459ff; padding: 6px 12px; border-radius: 16px; font-size: 14px; font-weight: bold; z-index: 20; pointer-events: none; }
+    .back-to-lobby { position: absolute; top: 5px; left: 10px; padding: 6px 12px; background: rgba(255,107,107,0.9); color: white; border: none; border-radius: 16px; cursor: pointer; z-index: 30; font-weight: bold; font-size: 11px; }
+    #cards-area { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding: 5px; background: rgba(0,0,0,0.4); } .cards-label { color: rgba(255,255,255,0.7); font-size: 9px; text-align: center; letter-spacing: 2px; font-weight: bold; } .cards-row { display: flex; gap: 4px; justify-content: center; }
+    .card-slot { width: 48px; height: 60px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.15); border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; color: white; font-size: 20px; } .card-slot.empty { background: rgba(0,0,0,0.3); border-style: dashed; } .card-slot:hover { border-color: #ffd93d; transform: translateY(-2px); } .card-slot.purchased { border-color: #6bcb77; background: rgba(107,203,119,0.15); }
+    .card-cost { position: absolute; top: -6px; right: -6px; background: #d459ff; color: white; width: 17px; height: 17px; border-radius: 50%; font-size: 9px; font-weight: bold; display: flex; align-items: center; justify-content: center; } .card-emoji { font-size: 22px; } .card-name { font-size: 7px; text-align: center; color: rgba(255,255,255,0.8); margin-top: 1px; }
+    .buy-btn { position: absolute; bottom: -5px; background: linear-gradient(135deg,#ffd93d,#ffaa00); color: #000; border: none; border-radius: 6px; padding: 1px 6px; font-size: 8px; font-weight: bold; cursor: pointer; }
   </style>
 </head>
 <body>
 <div id="game-container">
-  <div id="preloader">
-    <div class="logo-container"><div style="width:120px;height:120px;background:linear-gradient(135deg,#4d96ff,#ff6b6b,#ffd93d);border-radius:25px;display:flex;align-items:center;justify-content:center;font-size:55px;filter:drop-shadow(0 0 30px rgba(77,150,255,0.8))">⚔️</div></div>
-    <div id="game-title-splash">Clash-Of-MAS</div>
-    <div class="loading-block">
-      <div id="loading-bar-container"><div id="loading-bar"></div></div>
-      <div id="loading-text">ЗАГРУЗКА</div>
-      <div id="loading-percentage">0%</div>
-    </div>
-  </div>
+  <div id="preloader"><div class="logo-container"><div style="width:120px;height:120px;background:linear-gradient(135deg,#4d96ff,#ff6b6b,#ffd93d);border-radius:25px;display:flex;align-items:center;justify-content:center;font-size:55px;">⚔️</div></div><div id="game-title-splash">Clash-Of-MAS</div><div class="loading-block"><div id="loading-bar-container"><div id="loading-bar"></div></div><div id="loading-text">ЗАГРУЗКА</div><div id="loading-percentage">0%</div></div></div>
   <div id="lobby">
-    <div id="top-panel">
-      <button id="profile-button"><span class="profile-nickname">Игрок</span><span class="profile-icon">👤</span></button>
-      <button id="trophy-button"><div class="trophy-top"><span class="trophy-icon">🏆</span><span class="trophy-count">0</span></div><div class="trophy-bar-container"><div class="trophy-bar-fill"></div></div></button>
-      <div id="top-spacer"></div>
-      <button id="menu-toggle"><div class="menu-bar"></div><div class="menu-bar"></div><div class="menu-bar"></div></button>
-    </div>
-    <div id="settings-overlay"></div>
-    <div id="settings-menu">
-      <div class="settings-menu-title">НАСТРОЙКИ</div>
-      <div class="settings-item"><div class="settings-item-dot"></div>Звук</div>
-      <div class="settings-item"><div class="settings-item-dot"></div>Музыка</div>
-      <div class="settings-item"><div class="settings-item-dot"></div>Управление</div>
-      <div class="settings-item"><div class="settings-item-dot"></div>Язык: RU</div>
-      <div class="settings-item"><div class="settings-item-dot"></div>О игре</div>
-    </div>
-    <div id="lobby-content">
-      <div id="home-page">
-        <div class="game-title-lobby">Clash-Of-MAS</div>
-        <button class="play-btn" id="play-button">Играть</button>
-        <button class="mode-btn" id="mode-button">Выбор режима</button>
-      </div>
-      <div id="cards-page">
-        <div class="page-title">📚 ВСЕ КАРТЫ</div>
-        <div class="cards-grid" id="all-cards-grid"></div>
-      </div>
-    </div>
-    <div id="bottom-nav">
-      <button class="nav-btn" data-label="Карты" id="nav-cards"><div class="cards-icon"><div class="card-mini"></div><div class="card-mini"></div><div class="card-mini"></div></div></button>
-      <button class="nav-btn" data-label="Клан">🛡️</button>
-      <button class="nav-btn active" data-label="Главная" id="nav-home">🏠</button>
-      <button class="nav-btn" data-label="Друзья">👥</button>
-      <button class="nav-btn" data-label="Ещё">📦</button>
-    </div>
+    <div id="top-panel"><button id="profile-button"><span class="profile-nickname">Игрок</span><span class="profile-icon">👤</span></button><button id="trophy-button"><div class="trophy-top"><span class="trophy-icon">🏆</span><span class="trophy-count">0</span></div><div class="trophy-bar-container"><div class="trophy-bar-fill"></div></div></button><div id="top-spacer"></div><button id="menu-toggle"><div class="menu-bar"></div><div class="menu-bar"></div><div class="menu-bar"></div></button></div>
+    <div id="settings-overlay"></div><div id="settings-menu"><div class="settings-menu-title">НАСТРОЙКИ</div><div class="settings-item"><div class="settings-item-dot"></div>Звук</div><div class="settings-item"><div class="settings-item-dot"></div>Музыка</div><div class="settings-item"><div class="settings-item-dot"></div>Управление</div><div class="settings-item"><div class="settings-item-dot"></div>Язык: RU</div><div class="settings-item"><div class="settings-item-dot"></div>О игре</div></div>
+    <div id="lobby-content"><div id="home-page"><div class="game-title-lobby">Clash-Of-MAS</div><button class="play-btn" id="play-button">Играть</button><button class="mode-btn" id="mode-button">Выбор режима</button></div><div id="cards-page"><div class="page-title">📚 ВСЕ КАРТЫ</div><div class="cards-grid" id="all-cards-grid"></div></div></div>
+    <div id="bottom-nav"><button class="nav-btn" data-label="Карты" id="nav-cards"><div class="cards-icon"><div class="card-mini"></div><div class="card-mini"></div><div class="card-mini"></div></div></button><button class="nav-btn" data-label="Клан">🛡️</button><button class="nav-btn active" data-label="Главная" id="nav-home">🏠</button><button class="nav-btn" data-label="Друзья">👥</button><button class="nav-btn" data-label="Ещё">📦</button></div>
   </div>
-  <div id="game-screen">
-    <div class="game-ui"><div class="game-phase" id="game-phase">РАССТАНОВКА</div><div class="game-timer" id="game-timer">20</div></div>
-    <div class="elixir-display" id="elixir-display">💜 10</div>
-    <button class="back-to-lobby" id="back-button">← НАЗАД</button>
-    <canvas id="gameCanvas"></canvas>
-    <div id="cards-area">
-      <div class="cards-label">ДОСТУПНЫЕ КАРТЫ</div>
-      <div class="cards-row" id="available-cards"></div>
-      <div class="cards-label" style="margin-top:2px">МОЯ КОЛОДА</div>
-      <div class="cards-row" id="purchased-cards"></div>
-    </div>
-  </div>
+  <div id="game-screen"><div class="game-ui"><div class="game-phase" id="game-phase">РАССТАНОВКА</div><div class="game-timer" id="game-timer">20</div></div><div class="elixir-display" id="elixir-display">💜 10</div><button class="back-to-lobby" id="back-button">← НАЗАД</button><canvas id="gameCanvas"></canvas><div id="cards-area"><div class="cards-label">ДОСТУПНЫЕ КАРТЫ</div><div class="cards-row" id="available-cards"></div><div class="cards-label" style="margin-top:2px">МОЯ КОЛОДА</div><div class="cards-row" id="purchased-cards"></div></div></div>
 </div>
-
-<div id="mode-modal">
-  <div class="mode-modal-content">
-    <div class="mode-modal-title">🎮 ВЫБОР РЕЖИМА</div>
-    <button class="mode-btn-option" id="mode-classic">⚔️ КЛАССИКА</button>
-    <button class="mode-btn-option pvp" id="mode-pvp">👥 PvP</button>
-    <button class="mode-btn-close" id="mode-close">ЗАКРЫТЬ</button>
-  </div>
-</div>
-
-<div id="pvp-waiting">
-  <div class="pvp-waiting-content">
-    <div class="pvp-waiting-spinner"></div>
-    <div class="pvp-waiting-text">Поиск соперника...</div>
-    <div style="color:rgba(255,255,255,0.6);font-size:14px;">Ожидание второго игрока</div>
-    <button class="pvp-waiting-cancel" id="pvp-cancel">ОТМЕНА</button>
-  </div>
-</div>
+<div id="mode-modal"><div class="mode-modal-content"><div class="mode-modal-title">🎮 ВЫБОР РЕЖИМА</div><button class="mode-btn-option" id="mode-classic">⚔️ КЛАССИКА</button><button class="mode-btn-option pvp" id="mode-pvp">👥 PvP</button><button class="mode-btn-close" id="mode-close">ЗАКРЫТЬ</button></div></div>
+<div id="pvp-waiting"><div class="pvp-waiting-content"><div class="pvp-waiting-spinner"></div><div class="pvp-waiting-text">Поиск соперника...</div><button class="pvp-waiting-cancel" id="pvp-cancel">ОТМЕНА</button></div></div>
 
 <script>
-// Автоопределение платформы
-const isYandexGames = typeof YaGames !== 'undefined';
-const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-console.log('🎮 Среда:', isYandexGames ? 'Яндекс Игры' : isLocal ? 'Локально' : 'Продакшн');
+const isYandexGames=typeof YaGames!=='undefined';
+let db=null,dbRef=null,dbSet=null,dbOnValue=null,dbRemove=null;
+async function initFirebase(){try{const{initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");const{getDatabase,ref,set,onValue,remove}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");const fc={apiKey:"AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",authDomain:"clash-of-mas-2c0fc.firebaseapp.com",databaseURL:"https://clash-of-mas-2c0fc-default-rtdb.europe-west1.firebasedatabase.app",projectId:"clash-of-mas-2c0fc",storageBucket:"clash-of-mas-2c0fc.firebasestorage.app",messagingSenderId:"127863621457",appId:"1:127863621457:web:3137db5d7f9e9878b1f570"};const app=initializeApp(fc);db=getDatabase(app);dbRef=ref;dbSet=set;dbOnValue=onValue;dbRemove=remove;}catch(e){}}
+if('serviceWorker' in navigator&&!isYandexGames)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
-// Firebase (уже настроен в твоём проекте)
-let db = null, dbRef = null, dbSet = null, dbOnValue = null, dbRemove = null;
-
-async function initFirebase() {
-  try {
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
-    const { getDatabase, ref, set, onValue, remove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
-    
-    const firebaseConfig = {
-      apiKey: "AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",
-      authDomain: "clash-of-mas-2c0fc.firebaseapp.com",
-      databaseURL: "https://clash-of-mas-2c0fc-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "clash-of-mas-2c0fc",
-      storageBucket: "clash-of-mas-2c0fc.firebasestorage.app",
-      messagingSenderId: "127863621457",
-      appId: "1:127863621457:web:3137db5d7f9e9878b1f570"
-    };
-    
-    const app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    dbRef = ref; dbSet = set; dbOnValue = onValue; dbRemove = remove;
-    console.log('✅ Firebase готов');
-  } catch(e) { console.log('⚠️ Firebase офлайн'); }
-}
-
-// Service Worker
-if ('serviceWorker' in navigator && !isYandexGames) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
-
-// Основная игра
 (function(){
 const RARITY_COLORS={common:'linear-gradient(90deg,#777,#999)',rare:'linear-gradient(90deg,#4d96ff,#6bcb77)',epic:'linear-gradient(90deg,#c440ff,#ffd93d)',legendary:'linear-gradient(90deg,#ff5555,#ffd93d,#ff5555)'};
 const ALL_CARDS=[{id:'warrior',name:'Воин',emoji:'⚔️',cost:3,hp:10,damage:4,attackRange:1,maxHp:10,rarity:'common'},{id:'archer',name:'Лучник',emoji:'🏹',cost:2,hp:6,damage:3,attackRange:3,maxHp:6,rarity:'common'},{id:'giant',name:'Гигант',emoji:'🦍',cost:5,hp:18,damage:2,attackRange:1,maxHp:18,rarity:'rare'},{id:'mage',name:'Маг',emoji:'🧙',cost:4,hp:7,damage:5,attackRange:2,maxHp:7,rarity:'rare'},{id:'goblin',name:'Гоблин',emoji:'👺',cost:1,hp:4,damage:2,attackRange:1,maxHp:4,rarity:'common'},{id:'knight',name:'Рыцарь',emoji:'🛡️',cost:3,hp:12,damage:3,attackRange:1,maxHp:12,rarity:'rare'},{id:'dragon',name:'Дракон',emoji:'🐉',cost:6,hp:14,damage:6,attackRange:2,maxHp:14,rarity:'epic'},{id:'healer',name:'Целитель',emoji:'💚',cost:3,hp:8,damage:0,attackRange:1,maxHp:8,heal:3,rarity:'rare'},{id:'assassin',name:'Ассасин',emoji:'🗡️',cost:2,hp:5,damage:5,attackRange:1,maxHp:5,rarity:'epic'},{id:'golem',name:'Голем',emoji:'🗿',cost:7,hp:22,damage:1,attackRange:1,maxHp:22,rarity:'legendary'}];
 
-const preloader=document.getElementById('preloader'),loadingBar=document.getElementById('loading-bar'),loadingPercentage=document.getElementById('loading-percentage'),lobby=document.getElementById('lobby'),gameScreen=document.getElementById('game-screen'),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d'),homePage=document.getElementById('home-page'),cardsPage=document.getElementById('cards-page');
+const preloader=document.getElementById('preloader'),loadingBar=document.getElementById('loading-bar'),loadingPercentage=document.getElementById('loading-percentage'),lobby=document.getElementById('lobby'),gameScreen=document.getElementById('game-screen'),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
 const COLS=4,ROWS=6;
 let cellSize=30,gridOffsetX=0,gridOffsetY=0,gameLoopId=null,timerInterval=null,elixir=10,MAX_ELIXIR=15,gamePhase='placement',timerSeconds=20,selectedPurchasedCard=null,isPlayerTurn=false,availableCards=[],purchasedCards=[],grid=[];
 let selectedUnitRow=-1,selectedUnitCol=-1,highlightedCells=[],placementHighlights=[];
-let currentMode='classic',playerId='player_'+Math.random().toString(36).substr(2,9),pvpListener=null;
+let currentMode='classic',playerId='player_'+Math.random().toString(36).substr(2,9),pvpListener=null,pvpRoom=null,pvpIsHost=false,pvpOpponentId=null;
 
-function renderAllCardsPage(){
-  const g=document.getElementById('all-cards-grid');if(!g)return;g.innerHTML='';
-  ALL_CARDS.forEach(c=>{
-    const d=document.createElement('div');d.className='card-info';
-    d.innerHTML='<div class="card-info-top-bar" style="background:'+RARITY_COLORS[c.rarity]+'"><div class="card-info-stats-left"><span class="card-info-stat hp">❤️ '+c.hp+'</span><span class="card-info-stat dmg">⚔️ '+c.damage+'</span></div><div class="card-info-name-area"><span class="card-info-name">'+c.name+'</span></div><span class="card-info-cost">💜'+c.cost+'</span></div><div class="card-info-image">'+c.emoji+'</div>';
-    g.appendChild(d);
-  });
-}
+function renderAllCardsPage(){const g=document.getElementById('all-cards-grid');if(!g)return;g.innerHTML='';ALL_CARDS.forEach(c=>{const d=document.createElement('div');d.className='card-info';d.innerHTML='<div class="card-info-top-bar" style="background:'+RARITY_COLORS[c.rarity]+'"><div class="card-info-stats-left"><span class="card-info-stat hp">❤️ '+c.hp+'</span><span class="card-info-stat dmg">⚔️ '+c.damage+'</span></div><div class="card-info-name-area"><span class="card-info-name">'+c.name+'</span></div><span class="card-info-cost">💜'+c.cost+'</span></div><div class="card-info-image">'+c.emoji+'</div>';g.appendChild(d)})}
 
-function initGrid(){
-  if(grid.length===0){for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++){grid[r][c]={color:r<3?'#ff4444':'#4488ff',unit:null,hp:0,maxHp:0,damage:0,attackRange:0,heal:0,hasMovedThisRound:false,cardData:null}}}for(let r=0;r<3;r++)for(let c=0;c<COLS;c++){grid[r][c].unit='👾';grid[r][c].hp=8;grid[r][c].maxHp=8;grid[r][c].heal=1;grid[r][c].cardData={name:'Миньон',emoji:'👾',hp:8,maxHp:8}}}
+function initGrid(isPvP=false){
+  if(grid.length===0){for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++){grid[r][c]={color:r<3?'#ff4444':'#4488ff',unit:null,hp:0,maxHp:0,damage:0,attackRange:0,heal:0,hasMovedThisRound:false,cardData:null}}}
+    if(!isPvP){for(let r=0;r<3;r++)for(let c=0;c<COLS;c++){grid[r][c].unit='👾';grid[r][c].hp=8;grid[r][c].maxHp=8;grid[r][c].heal=1;grid[r][c].cardData={name:'Миньон',emoji:'👾',hp:8,maxHp:8}}}}
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c])grid[r][c].hasMovedThisRound=false;
 }
 
 function calculateHighlights(row,col){
   const hl=[],cell=grid[row][col];if(!cell||!cell.unit)return hl;
-  const dir=row>=3?-1:1;
+  const dir=-1;
   for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;for(let c=Math.max(0,col-Math.floor(r/2));c<=Math.min(COLS-1,col+Math.floor(r/2));c++){const tc=grid[tr]?grid[tr][c]:null;if(!tc)continue;if(tc.unit){if(tr<3&&cell.damage>0)hl.push({row:tr,col:c,color:'rgba(255,40,40,0.6)',text:'-'+cell.damage});else if(tr>=3)hl.push({row:tr,col:c,color:'rgba(255,255,0,0.5)',text:''})}else hl.push({row:tr,col:c,color:'rgba(255,255,0,0.3)',text:''})}}
-  if(cell.heal>0){for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){const tc=grid[tr]?grid[tr][c]:null;if(tc&&tc.unit&&tr>=3)hl.push({row:tr,col:c,color:'rgba(50,100,255,0.6)',text:'+'+cell.heal})}}}
+  if(cell.heal>0)for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){const tc=grid[tr]?grid[tr][c]:null;if(tc&&tc.unit&&tr>=3)hl.push({row:tr,col:c,color:'rgba(50,100,255,0.6)',text:'+'+cell.heal})}}
   return hl;
 }
 
 function shuffleArray(a){const s=[...a];for(let i=s.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[s[i],s[j]]=[s[j],s[i]]}return s}
 
 function renderCards(){
-  const aR=document.getElementById('available-cards'),pR=document.getElementById('purchased-cards');
-  if(!aR||!pR)return;aR.innerHTML='';
+  const aR=document.getElementById('available-cards'),pR=document.getElementById('purchased-cards');if(!aR||!pR)return;aR.innerHTML='';
   for(let i=0;i<5;i++){const s=document.createElement('div');s.className='card-slot';if(availableCards[i]){const c=availableCards[i];s.innerHTML='<span class="card-emoji">'+c.emoji+'</span><span class="card-name">'+c.name+'</span><span class="card-cost">'+c.cost+'</span>';const b=document.createElement('button');b.className='buy-btn';b.textContent='КУПИТЬ';b.onclick=e=>{e.stopPropagation();buyCard(i)};s.appendChild(b)}else s.classList.add('empty');aR.appendChild(s)}
-  pR.innerHTML='';
-  for(let i=0;i<5;i++){const s=document.createElement('div');s.className='card-slot';if(i<purchasedCards.length){const c=purchasedCards[i];s.classList.add('purchased');s.innerHTML='<span class="card-emoji">'+c.emoji+'</span><span class="card-name">'+c.name+'</span>';s.onclick=()=>{if(gamePhase==='placement'){selectedPurchasedCard={index:i,card:c};placementHighlights=[];for(let r=3;r<6;r++)for(let cl=0;cl<COLS;cl++)if(!grid[r][cl].unit)placementHighlights.push({row:r,col:cl,color:'rgba(50,255,50,0.4)',text:''})}}}else s.classList.add('empty');pR.appendChild(s)}
+  pR.innerHTML='';for(let i=0;i<5;i++){const s=document.createElement('div');s.className='card-slot';if(i<purchasedCards.length){const c=purchasedCards[i];s.classList.add('purchased');s.innerHTML='<span class="card-emoji">'+c.emoji+'</span><span class="card-name">'+c.name+'</span>';s.onclick=()=>{if(gamePhase==='placement'){selectedPurchasedCard={index:i,card:c};placementHighlights=[];for(let r=3;r<6;r++)for(let cl=0;cl<COLS;cl++)if(!grid[r][cl].unit)placementHighlights.push({row:r,col:cl,color:'rgba(50,255,50,0.4)',text:''})}}}else s.classList.add('empty');pR.appendChild(s)}
 }
 
-function buyCard(i){if(gamePhase!=='placement'||!availableCards[i])return;const c=availableCards[i];if(elixir<c.cost)return;elixir-=c.cost;purchasedCards.push({...c});availableCards[i]=null;updateElixirDisplay();renderCards()}
+function buyCard(i){if(gamePhase!=='placement'||!availableCards[i])return;const c=availableCards[i];if(elixir<c.cost)return;elixir-=c.cost;purchasedCards.push({...c});availableCards[i]=null;updateElixirDisplay();renderCards();if(currentMode==='pvp')syncGridToFB()}
 function updateElixirDisplay(){const e=document.getElementById('elixir-display');if(e)e.textContent='💜 '+elixir}
 function updatePhaseDisplay(){const e=document.getElementById('game-phase');if(!e)return;e.textContent=gamePhase==='placement'?'РАССТАНОВКА':isPlayerTurn?'ВАШ ХОД':'ХОД ПРОТИВНИКА'}
 
 function resizeCanvas(){
-  const cont=document.getElementById('game-container'),ca=document.getElementById('cards-area');
-  if(!cont||!ca)return;const rect=cont.getBoundingClientRect(),ch=ca.offsetHeight||120,ah=rect.height-38-ch;
-  canvas.width=rect.width;canvas.height=Math.max(180,ah);
-  const gapBetween=10,gapEdge=10,totalGap=gapBetween*(COLS-1)+gapEdge*2,maxW=(canvas.width-totalGap)/COLS,maxH=(canvas.height-totalGap)/ROWS;
-  cellSize=Math.floor(Math.min(maxW,maxH));
-  gridOffsetX=Math.floor((canvas.width-cellSize*COLS-gapBetween*(COLS-1))/2);
-  gridOffsetY=Math.floor((canvas.height-cellSize*ROWS-gapBetween*(ROWS-1))/2);
+  const cont=document.getElementById('game-container'),ca=document.getElementById('cards-area');if(!cont||!ca)return;
+  const rect=cont.getBoundingClientRect();if(rect.width===0){setTimeout(resizeCanvas,100);return}
+  const ch=ca.offsetHeight||120,ah=rect.height-38-ch;canvas.width=rect.width;canvas.height=Math.max(180,ah);
+  const gapBetween=10,totalGap=gapBetween*(COLS-1)+20,maxW=(canvas.width-totalGap)/COLS,maxH=(canvas.height-20)/ROWS;cellSize=Math.floor(Math.min(maxW,maxH));
+  gridOffsetX=Math.floor((canvas.width-cellSize*COLS-gapBetween*(COLS-1))/2);gridOffsetY=Math.floor((canvas.height-cellSize*ROWS-gapBetween*(ROWS-1))/2);
 }
 
 function drawGrid(){
@@ -567,29 +148,19 @@ function drawGrid(){
   for(let r=0;r<ROWS;r++){for(let c=0;c<COLS;c++){if(!grid[r]||!grid[r][c])continue;const x=gridOffsetX+c*(cellSize+gapBetween),y=gridOffsetY+r*(cellSize+gapBetween),cell=grid[r][c];
     ctx.fillStyle=cell.color;ctx.beginPath();ctx.roundRect(x,y,cellSize,cellSize,cr);ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.stroke();
-    if(r===selectedUnitRow&&c===selectedUnitCol){ctx.fillStyle='rgba(255,215,0,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill();ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);ctx.stroke()}
-    if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'){ctx.fillStyle='rgba(255,255,100,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill()}
+    if(r===selectedUnitRow&&c===selectedUnitCol){ctx.fillStyle='rgba(255,215,0,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill();ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.stroke()}
+    if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'&&((isPlayerTurn&&r>=3)||(!isPlayerTurn&&r<3))){ctx.fillStyle='rgba(255,255,100,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill()}
     if(cell.unit){ctx.fillStyle='#fff';ctx.font=(cellSize*0.35)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cell.unit,x+cellSize/2,y+cellSize/2-cellSize*0.1);
-      const bw=cellSize*0.75,bh=4,bx=x+(cellSize-bw)/2,by=y+cellSize-7;ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);
-      const pct=cell.hp/cell.maxHp;ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';ctx.fillRect(bx,by,bw*pct,bh);
-      ctx.fillStyle='#fff';ctx.font='bold '+Math.max(6,cellSize*0.16)+'px Arial';ctx.textAlign='center';ctx.fillText(Math.ceil(cell.hp)+'/'+cell.maxHp,x+cellSize/2,y+cellSize-10);
-    }
-  }}
+      const bw=cellSize*0.75,bh=4,bx=x+(cellSize-bw)/2,by=y+cellSize-7;ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);const pct=cell.hp/cell.maxHp;ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';ctx.fillRect(bx,by,bw*pct,bh);
+      ctx.fillStyle='#fff';ctx.font='bold '+Math.max(6,cellSize*0.16)+'px Arial';ctx.textAlign='center';ctx.fillText(Math.ceil(cell.hp)+'/'+cell.maxHp,x+cellSize/2,y+cellSize-10)}}}
   placementHighlights.forEach(h=>{const x=gridOffsetX+h.col*(cellSize+gapBetween),y=gridOffsetY+h.row*(cellSize+gapBetween);ctx.fillStyle=h.color;ctx.beginPath();ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);ctx.fill();ctx.strokeStyle='rgba(50,255,50,0.8)';ctx.lineWidth=2;ctx.stroke()});
   highlightedCells.forEach(h=>{const x=gridOffsetX+h.col*(cellSize+gapBetween),y=gridOffsetY+h.row*(cellSize+gapBetween);ctx.fillStyle=h.color;ctx.beginPath();ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);ctx.fill();ctx.strokeStyle=h.color.replace('0.6','0.9').replace('0.5','0.8').replace('0.3','0.6');ctx.lineWidth=2;ctx.stroke();if(h.text){ctx.fillStyle='#fff';ctx.font='bold '+Math.max(12,cellSize*0.35)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.strokeText(h.text,x+cellSize/2,y+cellSize/2);ctx.fillText(h.text,x+cellSize/2,y+cellSize/2)}});
 }
 
 function unitAttack(row,col){
   const cell=grid[row][col];if(!cell.unit||cell.damage<=0)return;
-  const dir=row>=3?-1:1;
-  for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS||tr>=3)break;const tc=grid[tr][col];if(tc&&tc.unit){tc.hp-=cell.damage;if(tc.hp<=0){tc.unit=null;tc.hp=0;tc.cardData=null}break}}
-}
-
-function enemyTurn(){
-  const ae=[];for(let r=0;r<3;r++)for(let c=0;c<COLS;c++){const cell=grid[r][c];if(cell.unit&&cell.hp>0&&!cell.hasMovedThisRound)ae.push({r,c,cell})}
-  if(ae.length===0)return;const re=ae[Math.floor(Math.random()*ae.length)];
-  if(re.cell.hp<re.cell.maxHp){re.cell.hp=Math.min(re.cell.maxHp,re.cell.hp+1)}else{}
-  re.cell.hasMovedThisRound=true;
+  const dir=-1;for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;const tc=grid[tr][col];if(tc&&tc.unit){tc.hp-=cell.damage;if(tc.hp<=0){tc.unit=null;tc.hp=0;tc.cardData=null}break}}
+  if(currentMode==='pvp')syncGridToFB();
 }
 
 function checkMoves(){let pm=0,em=0;for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)pm++;for(let r=0;r<3;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)em++;return{playerMoves:pm,enemyMoves:em}}
@@ -597,102 +168,124 @@ function checkMoves(){let pm=0,em=0;for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)i
 function startPlacementPhase(){
   gamePhase='placement';isPlayerTurn=false;elixir=Math.min(MAX_ELIXIR,elixir+5);
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
-  updateElixirDisplay();updatePhaseDisplay();initGrid();
+  updateElixirDisplay();updatePhaseDisplay();
+  if(currentMode==='pvp'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c])grid[r][c].hasMovedThisRound=false}
+  else initGrid();
   availableCards=shuffleArray(ALL_CARDS).slice(0,5);purchasedCards=[];selectedPurchasedCard=null;renderCards();
   timerSeconds=20;document.getElementById('game-timer').textContent=timerSeconds;
   if(timerInterval)clearInterval(timerInterval);
   timerInterval=setInterval(()=>{timerSeconds--;document.getElementById('game-timer').textContent=timerSeconds;if(timerSeconds<=0){clearInterval(timerInterval);startBattlePhase()}},1000);
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function startBattlePhase(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null}
-  gamePhase='playerTurn';isPlayerTurn=Math.random()<0.5;
+  gamePhase='playerTurn';
+  if(currentMode==='classic'){isPlayerTurn=Math.random()<0.5}
+  else{const{playerMoves,enemyMoves}=checkMoves();isPlayerTurn=playerMoves>0}
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
   updatePhaseDisplay();document.getElementById('game-timer').textContent='';
-  if(!isPlayerTurn)setTimeout(()=>{enemyTurn();processTurn()},500);
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function processTurn(){
   const{playerMoves,enemyMoves}=checkMoves();
   if(playerMoves===0||enemyMoves===0){startPlacementPhase();return}
   isPlayerTurn=!isPlayerTurn;updatePhaseDisplay();
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
+// ====== PVP СИНХРОНИЗАЦИЯ ======
+function syncGridToFB(){
+  if(!pvpRoom)return;
+  const gd=grid.map(r=>r.map(c=>({unit:c.unit,hp:c.hp,maxHp:c.maxHp,damage:c.damage,attackRange:c.attackRange,heal:c.heal,hasMovedThisRound:c.hasMovedThisRound,cardData:c.cardData})));
+  dbSet(dbRef(db,'rooms/'+pvpRoom+'/grid'),gd);
+}
+function syncStateToFB(){
+  if(!pvpRoom)return;
+  dbSet(dbRef(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn,timerSeconds,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});
+}
+function loadFromFB(){
+  if(!pvpRoom)return;
+  dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/grid'),(snap)=>{
+    const d=snap.val();if(d)for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(d[r]&&d[r][c]){grid[r][c].unit=d[r][c].unit;grid[r][c].hp=d[r][c].hp;grid[r][c].maxHp=d[r][c].maxHp;grid[r][c].damage=d[r][c].damage;grid[r][c].attackRange=d[r][c].attackRange;grid[r][c].heal=d[r][c].heal;grid[r][c].hasMovedThisRound=d[r][c].hasMovedThisRound;grid[r][c].cardData=d[r][c].cardData}
+  });
+  dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
+    const s=snap.val();if(s&&s.currentPlayer!==playerId){gamePhase=s.phase;isPlayerTurn=false;updatePhaseDisplay()}
+  });
+}
+
 function startPvP(){
-  if(!db){alert('PvP требует подключения к интернету');return}
+  if(!db){alert('PvP требует интернет');return}
   document.getElementById('pvp-waiting').classList.add('active');
   dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId,status:'waiting',timestamp:Date.now()});
-  pvpListener=dbOnValue(dbRef(db,'pvp_queue'),(snapshot)=>{
-    const data=snapshot.val();if(!data)return;
-    const players=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
-    if(players.length>0) startPvPGame(players[0].playerId);
+  pvpListener=dbOnValue(dbRef(db,'pvp_queue'),(snap)=>{
+    const d=snap.val();if(!d)return;const players=Object.values(d).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
+    if(players.length>0)startPvPGame(players[0].playerId);
   });
   setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){cancelPvP();alert('Соперник не найден')}},30000);
 }
-
-function startPvPGame(opponentId){
+function startPvPGame(oppId){
   if(pvpListener){dbRemove(dbRef(db,'pvp_queue'));pvpListener=null}
-  document.getElementById('pvp-waiting').classList.remove('active');
-  dbRemove(dbRef(db,'pvp_queue/'+playerId));
-  dbRemove(dbRef(db,'pvp_queue/'+opponentId));
-  startGame();
+  document.getElementById('pvp-waiting').classList.remove('active');dbRemove(dbRef(db,'pvp_queue/'+playerId));dbRemove(dbRef(db,'pvp_queue/'+oppId));
+  pvpOpponentId=oppId;pvpRoom='room_'+Date.now();pvpIsHost=playerId<oppId;
+  initGrid(true);
+  if(pvpIsHost){syncGridToFB();syncStateToFB()}
+  loadFromFB();startGame();
 }
-
-function cancelPvP(){
-  document.getElementById('pvp-waiting').classList.remove('active');
-  if(pvpListener){dbRemove(dbRef(db,'pvp_queue'));pvpListener=null}
-  dbRemove(dbRef(db,'pvp_queue/'+playerId));
-}
+function cancelPvP(){document.getElementById('pvp-waiting').classList.remove('active');if(pvpListener){dbRemove(dbRef(db,'pvp_queue'));pvpListener=null}dbRemove(dbRef(db,'pvp_queue/'+playerId))}
 
 function startGame(){
-  lobby.style.display='none';lobby.classList.remove('active');
-  gameScreen.classList.add('active');
-  elixir=10;grid.length=0;
+  lobby.style.display='none';lobby.classList.remove('active');gameScreen.classList.add('active');
+  elixir=10;if(currentMode==='classic')grid.length=0;
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
-  startPlacementPhase();resizeCanvas();
+  startPlacementPhase();setTimeout(resizeCanvas,200);
   if(gameLoopId)cancelAnimationFrame(gameLoopId);gameLoop();
 }
 
 document.getElementById('play-button').onclick=()=>{if(currentMode==='classic')startGame();else startPvP()};
 document.getElementById('mode-button').onclick=()=>{document.getElementById('mode-modal').classList.add('active')};
-document.getElementById('mode-classic').onclick=()=>{currentMode='classic';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='⚔️ КЛАССИКА';document.getElementById('mode-button').style.borderColor='rgba(77,150,255,0.6)'};
-document.getElementById('mode-pvp').onclick=()=>{currentMode='pvp';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='👥 PvP';document.getElementById('mode-button').style.borderColor='rgba(255,107,107,0.6)'};
+document.getElementById('mode-classic').onclick=()=>{currentMode='classic';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='⚔️ КЛАССИКА'};
+document.getElementById('mode-pvp').onclick=()=>{currentMode='pvp';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='👥 PvP'};
 document.getElementById('mode-close').onclick=()=>{document.getElementById('mode-modal').classList.remove('active')};
-document.getElementById('pvp-cancel').onclick=()=>{cancelPvP()};
+document.getElementById('pvp-cancel').onclick=cancelPvP;
 document.getElementById('back-button').onclick=()=>{if(timerInterval)clearInterval(timerInterval);if(gameLoopId)cancelAnimationFrame(gameLoopId);gameScreen.classList.remove('active');showLobby()};
-document.getElementById('nav-home').onclick=()=>{homePage.style.display='flex';cardsPage.classList.remove('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-home').classList.add('active')};
-document.getElementById('nav-cards').onclick=()=>{homePage.style.display='none';cardsPage.classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-cards').classList.add('active');renderAllCardsPage()};
+document.getElementById('nav-home').onclick=()=>{document.getElementById('home-page').style.display='flex';document.getElementById('cards-page').classList.remove('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-home').classList.add('active')};
+document.getElementById('nav-cards').onclick=()=>{document.getElementById('home-page').style.display='none';document.getElementById('cards-page').classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-cards').classList.add('active');renderAllCardsPage()};
 
 canvas.onclick=e=>{
   if(!gameScreen.classList.contains('active'))return;
-  const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top,gapBetween=10;
+  const rect=canvas.getBoundingClientRect();if(rect.width===0)return;
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top,gapBetween=10;
   const col=Math.floor((mx-gridOffsetX)/(cellSize+gapBetween)),row=Math.floor((my-gridOffsetY)/(cellSize+gapBetween));
   if(col<0||col>=COLS||row<0||row>=ROWS){if(gamePhase==='playerTurn'){selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[]}return}
-  if(gamePhase==='placement'){if(row>=3&&selectedPurchasedCard&&!grid[row][col].unit){const card=selectedPurchasedCard.card;grid[row][col].unit=card.emoji;grid[row][col].hp=card.hp;grid[row][col].maxHp=card.maxHp;grid[row][col].damage=card.damage;grid[row][col].attackRange=card.attackRange;grid[row][col].heal=card.heal||0;grid[row][col].cardData=card;purchasedCards.splice(selectedPurchasedCard.index,1);selectedPurchasedCard=null;placementHighlights=[];renderCards()}}
-  else if(gamePhase==='playerTurn'&&isPlayerTurn){const cell=grid[row][col];if(row>=3&&cell&&cell.unit&&!cell.hasMovedThisRound){if(selectedUnitRow===row&&selectedUnitCol===col){cell.hasMovedThisRound=true;unitAttack(row,col);selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];processTurn();setTimeout(()=>{if(!isPlayerTurn&&gamePhase==='playerTurn'){enemyTurn();processTurn()}},400)}else{selectedUnitRow=row;selectedUnitCol=col;highlightedCells=calculateHighlights(row,col)}}else{selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[]}}
+  
+  if(gamePhase==='placement'){
+    if(row>=3&&selectedPurchasedCard&&!grid[row][col].unit){
+      const card=selectedPurchasedCard.card;grid[row][col].unit=card.emoji;grid[row][col].hp=card.hp;grid[row][col].maxHp=card.maxHp;
+      grid[row][col].damage=card.damage;grid[row][col].attackRange=card.attackRange;grid[row][col].heal=card.heal||0;grid[row][col].cardData=card;
+      purchasedCards.splice(selectedPurchasedCard.index,1);selectedPurchasedCard=null;placementHighlights=[];renderCards();
+      if(currentMode==='pvp')syncGridToFB();
+    }
+  }else if(gamePhase==='playerTurn'&&isPlayerTurn){
+    if(row>=3&&grid[row][col].unit&&!grid[row][col].hasMovedThisRound){
+      if(selectedUnitRow===row&&selectedUnitCol===col){
+        grid[row][col].hasMovedThisRound=true;unitAttack(row,col);
+        selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];processTurn();
+      }else{selectedUnitRow=row;selectedUnitCol=col;highlightedCells=calculateHighlights(row,col)}
+    }else{selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[]}
+  }
 };
 
 document.getElementById('menu-toggle').onclick=()=>{const m=document.getElementById('settings-menu'),o=document.getElementById('settings-overlay'),t=document.getElementById('menu-toggle');m.classList.toggle('active');o.classList.toggle('active');t.classList.toggle('active')};
 document.getElementById('settings-overlay').onclick=()=>{document.getElementById('settings-menu').classList.remove('active');document.getElementById('settings-overlay').classList.remove('active');document.getElementById('menu-toggle').classList.remove('active')};
-window.onresize=()=>{if(gameScreen.classList.contains('active'))resizeCanvas()};
+window.addEventListener('resize',()=>{if(gameScreen.classList.contains('active'))resizeCanvas()});
+window.addEventListener('orientationchange',()=>{if(gameScreen.classList.contains('active'))setTimeout(resizeCanvas,300)});
 
-async function boot(){
-  await initFirebase();
-  let progress=0;
-  const loadInterval=setInterval(()=>{
-    progress+=Math.random()*15;
-    if(progress>=100){progress=100;clearInterval(loadInterval);
-      setTimeout(()=>{preloader.classList.add('hidden');
-        setTimeout(()=>{preloader.style.display='none';showLobby()},800);
-      },500);
-    }
-    loadingBar.style.width=Math.floor(progress)+'%';
-    loadingPercentage.textContent=Math.floor(progress)+'%';
-  },300);
-}
+async function boot(){await initFirebase();let p=0;const iv=setInterval(()=>{p+=Math.random()*15;if(p>=100){p=100;clearInterval(iv);setTimeout(()=>{preloader.classList.add('hidden');setTimeout(()=>{preloader.style.display='none';showLobby()},800)},500)}loadingBar.style.width=Math.floor(p)+'%';loadingPercentage.textContent=Math.floor(p)+'%'},300)}
 boot();
 })();
 </script>
