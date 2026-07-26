@@ -207,7 +207,7 @@ function processTurn(){
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
-// ====== ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ ======
+// ====== PVP СИНХРОНИЗАЦИЯ (ДОБАВЛЕНО) ======
 function syncGridToFB(){
   if(!pvpRoom)return;
   const gd=[];
@@ -234,7 +234,7 @@ function loadFromFB(){
   });
 }
 
-// ====== PVP ЗАПУСК ======
+// ====== PVP ЗАПУСК (ИСПРАВЛЕНО) ======
 function startPvP(){
   if(!db){alert('PvP требует подключения к интернету');return}
   document.getElementById('pvp-waiting').classList.add('active');
