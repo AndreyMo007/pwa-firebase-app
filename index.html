@@ -210,31 +210,27 @@ function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 function syncGridToFB(){
   if(!pvpRoom)return;
   const gd=[];
-  for(let r=0;r<ROWS;r++){gd[r]=[];for(let c=0;c<COLS;c++){const cell=grid[r][c];gd[r][c]={unit:cell.unit,hp:cell.hp,maxHp:cell.maxHp,damage:cell.damage,attackRange:cell.attackRange,heal:cell.heal,hasMovedThisRound:cell.hasMovedThisRound,cardData:cell.cardData}}}
+  for(let r=0;r<ROWS;r++){gd[r]=[];for(let c=0;c<COLS;c++){const cell=grid[r][c];gd[r][c]={u:cell.unit,h:cell.hp,mh:cell.maxHp,d:cell.damage,ar:cell.attackRange,he:cell.heal,hm:cell.hasMovedThisRound,cd:cell.cardData?{n:cell.cardData.name,e:cell.cardData.emoji,h:cell.cardData.hp,mh:cell.cardData.maxHp}:null}}}
   dbSet(dbRef(db,'rooms/'+pvpRoom+'/grid'),gd);
 }
 function syncStateToFB(){
   if(!pvpRoom)return;
-  dbSet(dbRef(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});
+  dbSet(dbRef(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn:isPlayerTurn,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});
 }
 function loadFromFB(){
   if(!pvpRoom)return;
   dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/grid'),(snap)=>{
     const d=snap.val();if(!d)return;
-    console.log('📥 Получен grid от противника');
-    for(let r=0;r<ROWS;r++){if(!d[r])continue;for(let c=0;c<COLS;c++){if(!d[r][c]||!grid[r]||!grid[r][c])continue;
-      // Зеркалим для гостя
-      let tr=r, tc=c;
-      if(!pvpIsHost){tr=(ROWS-1)-r; tc=(COLS-1)-c;}
+    for(let r=0;r<ROWS;r++){if(!d[r])continue;for(let c=0;c<COLS;c++){if(!d[r][c])continue;
+      let tr=r,tc=c;
+      if(!pvpIsHost){tr=(ROWS-1)-r;tc=(COLS-1)-c;}
       if(!grid[tr]||!grid[tr][tc])continue;
-      grid[tr][tc].unit=d[r][c].unit;
-      grid[tr][tc].hp=d[r][c].hp;
-      grid[tr][tc].maxHp=d[r][c].maxHp;
-      grid[tr][tc].damage=d[r][c].damage;
-      grid[tr][tc].attackRange=d[r][c].attackRange;
-      grid[tr][tc].heal=d[r][c].heal;
-      grid[tr][tc].hasMovedThisRound=d[r][c].hasMovedThisRound;
-      grid[tr][tc].cardData=d[r][c].cardData;
+      if(tr<3){
+        grid[tr][tc].unit=d[r][c].u;grid[tr][tc].hp=d[r][c].h;grid[tr][tc].maxHp=d[r][c].mh;
+        grid[tr][tc].damage=d[r][c].d;grid[tr][tc].attackRange=d[r][c].ar;grid[tr][tc].heal=d[r][c].he||0;
+        grid[tr][tc].hasMovedThisRound=d[r][c].hm;
+        if(d[r][c].cd){grid[tr][tc].cardData={name:d[r][c].cd.n,emoji:d[r][c].cd.e,hp:d[r][c].cd.h,maxHp:d[r][c].cd.mh};}
+      }
     }}
   });
   dbOnValue(dbRef(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
@@ -242,11 +238,10 @@ function loadFromFB(){
   });
 }
 
-// ====== PVP ЗАПУСК ======
 function startPvP(){
   if(!db){alert('PvP требует подключения к интернету');return}
   document.getElementById('pvp-waiting').classList.add('active');
-  dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId,status:'waiting',timestamp:Date.now()});
+  dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId:playerId,status:'waiting',timestamp:Date.now()});
   pvpQueueUnsub=dbOnValue(dbRef(db,'pvp_queue'),(snap)=>{
     const data=snap.val();if(!data)return;
     const waitingPlayers=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
