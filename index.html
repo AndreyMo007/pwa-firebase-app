@@ -469,19 +469,15 @@
 </div>
 
 <script>
-// Автоопределение платформы
 const isYandexGames = typeof YaGames !== 'undefined';
-const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-console.log('🎮 Среда:', isYandexGames ? 'Яндекс Игры' : isLocal ? 'Локально' : 'Продакшн');
+console.log('🎮 Среда:', isYandexGames ? 'Яндекс Игры' : 'Продакшн');
 
-// Firebase (уже настроен в твоём проекте)
 let db = null, dbRef = null, dbSet = null, dbOnValue = null, dbRemove = null;
 
 async function initFirebase() {
   try {
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
     const { getDatabase, ref, set, onValue, remove } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
-    
     const firebaseConfig = {
       apiKey: "AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",
       authDomain: "clash-of-mas-2c0fc.firebaseapp.com",
@@ -491,20 +487,16 @@ async function initFirebase() {
       messagingSenderId: "127863621457",
       appId: "1:127863621457:web:3137db5d7f9e9878b1f570"
     };
-    
     const app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    dbRef = ref; dbSet = set; dbOnValue = onValue; dbRemove = remove;
+    db = getDatabase(app); dbRef = ref; dbSet = set; dbOnValue = onValue; dbRemove = remove;
     console.log('✅ Firebase готов');
   } catch(e) { console.log('⚠️ Firebase офлайн'); }
 }
 
-// Service Worker
 if ('serviceWorker' in navigator && !isYandexGames) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-// Основная игра
 (function(){
 const RARITY_COLORS={common:'linear-gradient(90deg,#777,#999)',rare:'linear-gradient(90deg,#4d96ff,#6bcb77)',epic:'linear-gradient(90deg,#c440ff,#ffd93d)',legendary:'linear-gradient(90deg,#ff5555,#ffd93d,#ff5555)'};
 const ALL_CARDS=[{id:'warrior',name:'Воин',emoji:'⚔️',cost:3,hp:10,damage:4,attackRange:1,maxHp:10,rarity:'common'},{id:'archer',name:'Лучник',emoji:'🏹',cost:2,hp:6,damage:3,attackRange:3,maxHp:6,rarity:'common'},{id:'giant',name:'Гигант',emoji:'🦍',cost:5,hp:18,damage:2,attackRange:1,maxHp:18,rarity:'rare'},{id:'mage',name:'Маг',emoji:'🧙',cost:4,hp:7,damage:5,attackRange:2,maxHp:7,rarity:'rare'},{id:'goblin',name:'Гоблин',emoji:'👺',cost:1,hp:4,damage:2,attackRange:1,maxHp:4,rarity:'common'},{id:'knight',name:'Рыцарь',emoji:'🛡️',cost:3,hp:12,damage:3,attackRange:1,maxHp:12,rarity:'rare'},{id:'dragon',name:'Дракон',emoji:'🐉',cost:6,hp:14,damage:6,attackRange:2,maxHp:14,rarity:'epic'},{id:'healer',name:'Целитель',emoji:'💚',cost:3,hp:8,damage:0,attackRange:1,maxHp:8,heal:3,rarity:'rare'},{id:'assassin',name:'Ассасин',emoji:'🗡️',cost:2,hp:5,damage:5,attackRange:1,maxHp:5,rarity:'epic'},{id:'golem',name:'Голем',emoji:'🗿',cost:7,hp:22,damage:1,attackRange:1,maxHp:22,rarity:'legendary'}];
