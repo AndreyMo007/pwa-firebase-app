@@ -93,11 +93,25 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const fc={apiKey:"AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",authDomain:"clash-of-mas-2c0fc.firebaseapp.com",databaseURL:"https://clash-of-mas-2c0fc-default-rtdb.europe-west1.firebasedatabase.app",projectId:"clash-of-mas-2c0fc",storageBucket:"clash-of-mas-2c0fc.firebasestorage.app",messagingSenderId:"127863621457",appId:"1:127863621457:web:3137db5d7f9e9878b1f570"};
-const app=initializeApp(fc),db=getDatabase(app);
-const isYG=typeof YaGames!=='undefined';
-if('serviceWorker' in navigator&&!isYG)navigator.serviceWorker.register('sw.js').catch(()=>{});
+const firebaseConfig = {
+  apiKey: "AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",
+  authDomain: "clash-of-mas-2c0fc.firebaseapp.com",
+  databaseURL: "https://clash-of-mas-2c0fc-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "clash-of-mas-2c0fc",
+  storageBucket: "clash-of-mas-2c0fc.firebasestorage.app",
+  messagingSenderId: "127863621457",
+  appId: "1:127863621457:web:3137db5d7f9e9878b1f570"
+};
 
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const isYandexGames = typeof YaGames !== 'undefined';
+if ('serviceWorker' in navigator && !isYandexGames) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ============ ИГРА ============
 const RARITY_COLORS={common:'linear-gradient(90deg,#777,#999)',rare:'linear-gradient(90deg,#4d96ff,#6bcb77)',epic:'linear-gradient(90deg,#c440ff,#ffd93d)',legendary:'linear-gradient(90deg,#ff5555,#ffd93d,#ff5555)'};
 const ALL_CARDS=[{id:'warrior',name:'Воин',emoji:'⚔️',cost:3,hp:10,damage:4,attackRange:1,maxHp:10,rarity:'common'},{id:'archer',name:'Лучник',emoji:'🏹',cost:2,hp:6,damage:3,attackRange:3,maxHp:6,rarity:'common'},{id:'giant',name:'Гигант',emoji:'🦍',cost:5,hp:18,damage:2,attackRange:1,maxHp:18,rarity:'rare'},{id:'mage',name:'Маг',emoji:'🧙',cost:4,hp:7,damage:5,attackRange:2,maxHp:7,rarity:'rare'},{id:'goblin',name:'Гоблин',emoji:'👺',cost:1,hp:4,damage:2,attackRange:1,maxHp:4,rarity:'common'},{id:'knight',name:'Рыцарь',emoji:'🛡️',cost:3,hp:12,damage:3,attackRange:1,maxHp:12,rarity:'rare'},{id:'dragon',name:'Дракон',emoji:'🐉',cost:6,hp:14,damage:6,attackRange:2,maxHp:14,rarity:'epic'},{id:'healer',name:'Целитель',emoji:'💚',cost:3,hp:8,damage:0,attackRange:1,maxHp:8,heal:3,rarity:'rare'},{id:'assassin',name:'Ассасин',emoji:'🗡️',cost:2,hp:5,damage:5,attackRange:1,maxHp:5,rarity:'epic'},{id:'golem',name:'Голем',emoji:'🗿',cost:7,hp:22,damage:1,attackRange:1,maxHp:22,rarity:'legendary'}];
 
@@ -199,7 +213,7 @@ function processTurn(){
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
-// ====== PVP ФУНКЦИИ (ИСПРАВЛЕНО) ======
+// ====== PVP ФУНКЦИИ (ПОЛНОСТЬЮ ПЕРЕПИСАНЫ) ======
 function sendGrid(){
   if(!pvpRoom)return;
   const data=[];
@@ -216,22 +230,12 @@ function listenToOpponent(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/grid'),(snap)=>{
     const d=snap.val();if(!d)return;
-    for(let r=0;r<ROWS;r++){if(!d[r])continue;for(let c=0;c<COLS;c++){
-      // Определяем куда писать (для гостя зеркалим)
+    for(let r=0;r<ROWS;r++){if(!d[r])continue;for(let c=0;c<COLS;c++){if(!d[r][c])continue;
       let tr=r,tc=c;
       if(!pvpIsHost){tr=(ROWS-1)-r;tc=(COLS-1)-c;}
       if(!grid[tr]||!grid[tr][tc])continue;
-      // Обновляем ТОЛЬКО вражеские клетки (ряды 0-2)
-      if(tr<3){
-        if(d[r][c]&&d[r][c].u){
-          grid[tr][tc].unit=d[r][c].u;grid[tr][tc].hp=d[r][c].h;grid[tr][tc].maxHp=d[r][c].mh;
-          grid[tr][tc].damage=d[r][c].d;grid[tr][tc].attackRange=d[r][c].ar;grid[tr][tc].heal=d[r][c].he||0;
-          grid[tr][tc].hasMovedThisRound=d[r][c].hm;
-          if(d[r][c].cd)grid[tr][tc].cardData={name:d[r][c].cd.n,emoji:d[r][c].cd.e};
-        }else{
-          grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;
-        }
-      }
+      if(d[r][c].u){grid[tr][tc].unit=d[r][c].u;grid[tr][tc].hp=d[r][c].h;grid[tr][tc].maxHp=d[r][c].mh;grid[tr][tc].damage=d[r][c].d;grid[tr][tc].attackRange=d[r][c].ar;grid[tr][tc].heal=d[r][c].he||0;grid[tr][tc].hasMovedThisRound=d[r][c].hm;if(d[r][c].cd)grid[tr][tc].cardData={name:d[r][c].cd.n,emoji:d[r][c].cd.e};}
+      else{grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;}
     }}
   });
   onValue(ref(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
