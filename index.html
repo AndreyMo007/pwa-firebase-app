@@ -113,7 +113,7 @@ const COLS=4,ROWS=6;
 let cellSize=30,gridOffsetX=0,gridOffsetY=0,gameLoopId=null,timerInterval=null,elixir=10,MAX_ELIXIR=15,gamePhase='placement',timerSeconds=20,selectedPurchasedCard=null,isPlayerTurn=false,availableCards=[],purchasedCards=[],grid=[];
 let selectedUnitRow=-1,selectedUnitCol=-1,highlightedCells=[],placementHighlights=[];
 let currentMode='classic',playerId='player_'+Math.random().toString(36).substr(2,9);
-let pvpRoom=null,pvpIsHost=false,pvpOpponentId=null,pvpQueueUnsub=null;
+let pvpRoom=null,pvpIsHost=false,pvpOpponentId=null,pvpQueueUnsub=null,pvpSignalUnsub=null;
 
 function renderAllCardsPage(){const g=document.getElementById('all-cards-grid');if(!g)return;g.innerHTML='';ALL_CARDS.forEach(c=>{const d=document.createElement('div');d.className='card-info';d.innerHTML='<div class="card-info-top-bar" style="background:'+RARITY_COLORS[c.rarity]+'"><div class="card-info-stats-left"><span class="card-info-stat hp">❤️ '+c.hp+'</span><span class="card-info-stat dmg">⚔️ '+c.damage+'</span></div><div class="card-info-name-area"><span class="card-info-name">'+c.name+'</span></div><span class="card-info-cost">💜'+c.cost+'</span></div><div class="card-info-image">'+c.emoji+'</div>';g.appendChild(d)})}
 
@@ -232,36 +232,77 @@ function loadFromFB(){
   });
 }
 
+// ====== ИСПРАВЛЕННЫЙ PVP: ОБА ИГРОКА ЗАХОДЯТ ======
 function startPvP(){
   if(!db){alert('PvP требует подключения к интернету');return}
   document.getElementById('pvp-waiting').classList.add('active');
+  
+  // Добавляем себя в очередь
   dbSet(dbRef(db,'pvp_queue/'+playerId),{playerId,status:'waiting',timestamp:Date.now()});
+  
+  // Слушаем очередь — когда найдётся второй игрок
   pvpQueueUnsub=dbOnValue(dbRef(db,'pvp_queue'),(snap)=>{
     const data=snap.val();if(!data)return;
     const waitingPlayers=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
-    if(waitingPlayers.length>0){
+    if(waitingPlayers.length>0&&!pvpRoom){
       const opponent=waitingPlayers[0];
+      pvpRoom='room_'+Date.now();
+      pvpOpponentId=opponent.playerId;
+      pvpIsHost=true;
+      
+      // Удаляем обоих из очереди
       dbRemove(dbRef(db,'pvp_queue/'+playerId));
       dbRemove(dbRef(db,'pvp_queue/'+opponent.playerId));
       if(pvpQueueUnsub){pvpQueueUnsub();pvpQueueUnsub=null;}
+      
+      // Отправляем сигнал гостю
+      dbSet(dbRef(db,'pvp_signals/'+opponent.playerId),{roomId:pvpRoom,hostId:playerId});
+      
+      // Инициализируем и запускаем
+      initGrid(true);
+      syncGridToFB();
+      syncStateToFB();
       document.getElementById('pvp-waiting').classList.remove('active');
-      startPvPGame(opponent.playerId);
+      loadFromFB();
+      startGame();
     }
   });
-  setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){cancelPvP();alert('Соперник не найден')}},30000);
-}
-
-function startPvPGame(oppId){
-  pvpOpponentId=oppId;pvpRoom='room_'+Date.now();pvpIsHost=playerId<oppId;
-  initGrid(true);
-  if(pvpIsHost){syncGridToFB();syncStateToFB();}
-  loadFromFB();startGame();
+  
+  // Слушаем сигнал от хоста (если этот игрок - гость)
+  pvpSignalUnsub=dbOnValue(dbRef(db,'pvp_signals/'+playerId),(snap)=>{
+    const signal=snap.val();
+    if(signal&&signal.roomId&&!pvpRoom){
+      pvpRoom=signal.roomId;
+      pvpOpponentId=signal.hostId;
+      pvpIsHost=false;
+      
+      // Удаляем сигнал
+      dbRemove(dbRef(db,'pvp_signals/'+playerId));
+      if(pvpSignalUnsub){pvpSignalUnsub();pvpSignalUnsub=null;}
+      
+      // Инициализируем и запускаем
+      initGrid(true);
+      document.getElementById('pvp-waiting').classList.remove('active');
+      loadFromFB();
+      startGame();
+    }
+  });
+  
+  // Таймаут
+  setTimeout(()=>{
+    if(document.getElementById('pvp-waiting').classList.contains('active')){
+      cancelPvP();
+      alert('Соперник не найден');
+    }
+  },30000);
 }
 
 function cancelPvP(){
   document.getElementById('pvp-waiting').classList.remove('active');
   if(pvpQueueUnsub){pvpQueueUnsub();pvpQueueUnsub=null;}
+  if(pvpSignalUnsub){pvpSignalUnsub();pvpSignalUnsub=null;}
   dbRemove(dbRef(db,'pvp_queue/'+playerId));
+  dbRemove(dbRef(db,'pvp_signals/'+playerId));
 }
 
 function startGame(){
