@@ -147,9 +147,9 @@ function drawGrid(){
 }
 function unitAttack(row,col){
   const cell=grid[row][col];if(!cell.unit||cell.damage<=0)return;
-  const dir=-1;
-  for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;const tc=grid[tr][col];if(tc&&tc.unit){tc.hp-=cell.damage;if(tc.hp<=0){tc.unit=null;tc.hp=0;tc.cardData=null}break}}
-  if(currentMode==='pvp'){saveMyField();syncAttackVisual(row,col);}
+  const dir=-1;let targetFound=false;
+  for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;const tc=grid[tr][col];if(tc&&tc.unit){tc.hp-=cell.damage;targetFound=true;if(tc.hp<=0){tc.unit=null;tc.hp=0;tc.cardData=null}break}}
+  if(currentMode==='pvp'){saveMyField();if(targetFound)syncAttackVisual(row,col);}
 }
 function checkMoves(){let pm=0,em=0;for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)pm++;for(let r=0;r<3;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)em++;return{playerMoves:pm,enemyMoves:em}}
 function startPlacementPhase(){
@@ -165,15 +165,10 @@ function startPlacementPhase(){
 }
 function startBattlePhase(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null}
-  gamePhase='playerTurn';
-  const{playerMoves,enemyMoves}=checkMoves();
-  if(currentMode==='pvp'&&pvpIsHost){
-    isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);
-  }else if(currentMode==='pvp'){
-    isPlayerTurn=false;
-  }else{
-    isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);
-  }
+  gamePhase='playerTurn';const{playerMoves,enemyMoves}=checkMoves();
+  if(currentMode==='pvp'&&pvpIsHost){isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);}
+  else if(currentMode==='pvp'){isPlayerTurn=false;}
+  else{isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);}
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
   updatePhaseDisplay();document.getElementById('game-timer').textContent='';
   if(currentMode==='pvp')syncStateToFB();
@@ -187,7 +182,7 @@ function processTurn(){
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
-// ====== PVP СИНХРОНИЗАЦИЯ ======
+// ====== PVP СИНХРОНИЗАЦИЯ (ПОЛНОСТЬЮ ПЕРЕПИСАНО) ======
 function saveMyField(){
   if(!pvpRoom)return;
   const myField=[[],[],[]];
@@ -196,29 +191,14 @@ function saveMyField(){
 }
 function syncStateToFB(){
   if(!pvpRoom)return;
-  set(ref(db,'rooms/'+pvpRoom+'/state'),{
-    phase:gamePhase,
-    isPlayerTurn:isPlayerTurn,
-    currentPlayer:isPlayerTurn?playerId:pvpOpponentId
-  });
+  set(ref(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn:isPlayerTurn,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});
 }
 function syncAttackVisual(row,col){
   if(!pvpRoom)return;
   const cell=grid[row][col];
-  if(!cell.unit||cell.damage<=0)return;
-  // Находим цель атаки
-  let targetRow=-1,targetCol=col;
-  const dir=-1;
-  for(let r=1;r<=cell.attackRange;r++){
-    const tr=row+dir*r;if(tr<0||tr>=ROWS)break;
-    const tc=grid[tr][col];
-    if(tc&&tc.unit){targetRow=tr;break;}
-  }
-  if(targetRow>=0){
-    set(ref(db,'rooms/'+pvpRoom+'/attack'),{
-      row:targetRow,col:targetCol,damage:cell.damage,time:Date.now()
-    });
-  }
+  let targetRow=-1;const dir=-1;
+  for(let r=1;r<=cell.attackRange;r++){const tr=row+dir*r;if(tr<0||tr>=ROWS)break;if(grid[tr]&&grid[tr][col]&&grid[tr][col].unit){targetRow=tr;break;}}
+  if(targetRow>=0){set(ref(db,'rooms/'+pvpRoom+'/attack'),{row:targetRow,col:col,damage:cell.damage,time:Date.now()});}
 }
 function watchOpponentField(){
   if(!pvpRoom||!pvpOpponentId)return;
@@ -230,33 +210,25 @@ function watchOpponentField(){
         grid[tr][tc].unit=oppField[r][c].u;grid[tr][tc].hp=oppField[r][c].h;grid[tr][tc].maxHp=oppField[r][c].mh;
         grid[tr][tc].damage=oppField[r][c].d||0;grid[tr][tc].attackRange=oppField[r][c].ar||1;
         grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
-      }
+      }else{grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;}
     }}
   });
 }
 function watchGameState(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
-    const s=snap.val();if(!s)return;
-    console.log('📥 Состояние от хоста:',s.phase,s.isPlayerTurn?'мой ход':'ход противника');
-    if(s.currentPlayer!==playerId){
-      gamePhase=s.phase;
-      isPlayerTurn=false;
-      updatePhaseDisplay();
-    }
+    const s=snap.val();if(!s||s.currentPlayer===playerId)return;
+    gamePhase=s.phase;isPlayerTurn=false;updatePhaseDisplay();
   });
 }
 function watchOpponentAttack(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();if(!a||Date.now()-a.time>2000)return;
-    console.log('⚔️ Атака противника! Ряд:',a.row,'Кол:',a.col,'Урон:',a.damage);
-    // Показываем атаку на вражеской клетке
     highlightedCells=[];
     let tr=a.row,tc=a.col;
     if(!pvpIsHost){tr=2-a.row;tc=3-a.col;}
-    highlightedCells.push({row:tr,col:tc,color:'rgba(255,40,40,0.6)',text:'-'+a.damage});
-    // Урон уже применён через watchOpponentField
+    if(grid[tr]&&grid[tr][tc]){highlightedCells.push({row:tr,col:tc,color:'rgba(255,40,40,0.6)',text:'-'+a.damage});}
     setTimeout(()=>{highlightedCells=[];},1500);
   });
 }
@@ -266,8 +238,7 @@ function startPvP(){
   let resolved=false;
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
     if(resolved||pvpRoom)return;
-    const sig=snap.val();
-    if(sig&&sig.roomId){resolved=true;pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
+    const sig=snap.val();if(sig&&sig.roomId){resolved=true;pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
       console.log('🎮 ГОСТЬ! Комната:',pvpRoom);
       remove(ref(db,'pvp_signals/'+playerId));remove(ref(db,'pvp_queue/'+playerId));unsubSignal();
       initGrid(true);document.getElementById('pvp-waiting').classList.remove('active');
