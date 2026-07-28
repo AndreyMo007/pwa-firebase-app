@@ -241,8 +241,9 @@ function startPvP(){
   console.log('🔍 Мой ID:',playerId,'Ищу соперника...');
   
   let alreadyMatched = false;
+  let unsubQueue;
   
-  // Сначала слушаем сигнал (для гостя) - ЭТО ДОЛЖНО БЫТЬ ПЕРВЫМ
+  // Сначала слушаем сигнал (для гостя)
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
     if(alreadyMatched||pvpRoom)return;
     const sig=snap.val();if(!sig||!sig.roomId)return;
@@ -265,7 +266,6 @@ function startPvP(){
   });
   
   // Потом ищем в очереди (для хоста)
-  let unsubQueue;
   unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
     if(alreadyMatched||pvpRoom)return;
     const data=snap.val();if(!data)return;
@@ -285,7 +285,6 @@ function startPvP(){
       unsubSignal();
       
       initGrid(true);
-      // Хост отправляет сигнал гостю
       set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
       
       document.getElementById('pvp-waiting').classList.remove('active');
