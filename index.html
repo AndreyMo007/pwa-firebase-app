@@ -93,7 +93,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// НОВЫЙ ПРАВИЛЬНЫЙ КОНФИГ
 const fc = {
   apiKey: "AIzaSyCgx-V8GP_cgCZLGws2e1pHZ5OnMy20nxk",
   authDomain: "clash-of-mas.firebaseapp.com",
@@ -215,19 +214,15 @@ function saveMyField(){
 }
 
 function watchOpponentField(){
-  if(!pvpRoom||!pvpOpponentId)return;
-  onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
-    const oppField=snap.val();if(!oppField)return;
+  if(!pvpRoom||!pvpOpponentId){console.log('❌ Нет комнаты или оппонента');return;}
+  console.log('👀 Слушаю поле оппонента:',pvpOpponentId);
+  const opponentRef = ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId);
+  onValue(opponentRef,(snap)=>{
+    const oppField=snap.val();
+    if(!oppField){return;}
     for(let r=0;r<3;r++){if(!oppField[r])continue;for(let c=0;c<COLS;c++){
-      // ПРАВИЛЬНОЕ ЗЕРКАЛИРОВАНИЕ
       let tr,tc;
-      if(!pvpIsHost){
-        tr=2-r;      // переворот по вертикали
-        tc=3-c;      // переворот по горизонтали
-      }else{
-        tr=r;
-        tc=c;
-      }
+      if(!pvpIsHost){tr=2-r;tc=3-c;}else{tr=r;tc=c;}
       if(oppField[r][c]&&oppField[r][c].u){
         grid[tr][tc].unit=oppField[r][c].u;
         grid[tr][tc].hp=oppField[r][c].h;
@@ -235,10 +230,6 @@ function watchOpponentField(){
         grid[tr][tc].damage=oppField[r][c].d||0;
         grid[tr][tc].attackRange=oppField[r][c].ar||1;
         grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
-      }else{
-        grid[tr][tc].unit=null;
-        grid[tr][tc].hp=0;
-        grid[tr][tc].cardData=null;
       }
     }}
   });
@@ -247,7 +238,6 @@ function watchOpponentField(){
 function startPvP(){
   document.getElementById('pvp-waiting').classList.add('active');
   set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,status:'waiting',time:Date.now()});
-  
   const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
     const data=snap.val();if(!data||pvpRoom)return;
     const waiting=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
@@ -259,19 +249,19 @@ function startPvP(){
       initGrid(true);
       set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
       document.getElementById('pvp-waiting').classList.remove('active');
-      watchOpponentField();startGame();
+      startGame();
+      setTimeout(()=>{watchOpponentField();},500);
     }
   });
-  
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
     const sig=snap.val();if(!sig||!sig.roomId||pvpRoom)return;
     pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
     remove(ref(db,'pvp_signals/'+playerId));unsubSignal();
     initGrid(true);
     document.getElementById('pvp-waiting').classList.remove('active');
-    watchOpponentField();startGame();
+    startGame();
+    setTimeout(()=>{watchOpponentField();},500);
   });
-  
   setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
 }
 
