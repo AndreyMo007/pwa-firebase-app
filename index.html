@@ -247,7 +247,7 @@ function startPvP(){
     if(waiting.length>0){
       const opp=waiting[0];
       pvpRoom='room_'+Date.now();
-      pvpOpponentId=opp.playerId; // ВАЖНО: сохраняем ID ПРОТИВНИКА
+      pvpOpponentId=opp.playerId;
       pvpIsHost=true;
       console.log('🎮 Я ХОСТ. Комната:',pvpRoom,'Мой ID:',playerId,'Оппонент ID:',pvpOpponentId);
       remove(ref(db,'pvp_queue/'+playerId));
@@ -264,7 +264,7 @@ function startPvP(){
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
     const sig=snap.val();if(!sig||!sig.roomId||pvpRoom)return;
     pvpRoom=sig.roomId;
-    pvpOpponentId=sig.hostId; // ВАЖНО: сохраняем ID ПРОТИВНИКА (хоста)
+    pvpOpponentId=sig.hostId;
     pvpIsHost=false;
     console.log('🎮 Я ГОСТЬ. Комната:',pvpRoom,'Мой ID:',playerId,'Оппонент ID:',pvpOpponentId);
     remove(ref(db,'pvp_signals/'+playerId));unsubSignal();
@@ -274,17 +274,6 @@ function startPvP(){
     setTimeout(()=>{console.log('👀 Подключаюсь к оппоненту:',pvpOpponentId);watchOpponentField();},500);
   });
   
-  setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
-}
-  const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
-    const sig=snap.val();if(!sig||!sig.roomId||pvpRoom)return;
-    pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
-    remove(ref(db,'pvp_signals/'+playerId));unsubSignal();
-    initGrid(true);
-    document.getElementById('pvp-waiting').classList.remove('active');
-    startGame();
-    setTimeout(()=>{watchOpponentField();},500);
-  });
   setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
 }
 
