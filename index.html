@@ -201,33 +201,43 @@ function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 // И слушает поле противника по пути: pvp_fields/{roomId}/{opponentId}
 
 function saveMyField(){
-  if(!pvpRoom)return;
-  // Сохраняем только свои 3 ряда (индексы 3,4,5)
+  if(!pvpRoom){console.log('❌ Нет комнаты');return;}
   const myField=[[],[],[]];
   for(let r=3;r<6;r++){for(let c=0;c<COLS;c++){const cell=grid[r][c];myField[r-3][c]=cell.unit?{u:cell.unit,h:cell.hp,mh:cell.maxHp,d:cell.damage,ar:cell.attackRange}:null}}
   set(ref(db,'pvp_fields/'+pvpRoom+'/'+playerId),myField);
+  console.log('📤 Моё поле сохранено. Юниты в рядах 3-5:',myField[0].filter(x=>x).length,myField[1].filter(x=>x).length,myField[2].filter(x=>x).length);
 }
 
 function watchOpponentField(){
-  if(!pvpRoom||!pvpOpponentId)return;
+  if(!pvpRoom||!pvpOpponentId){console.log('❌ Нет комнаты или оппонента');return;}
+  console.log('👀 Начинаю следить за противником:',pvpOpponentId,'в комнате:',pvpRoom);
+  
   onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
-    const oppField=snap.val();if(!oppField)return;
-    // Записываем поле противника в наши вражеские ряды (0,1,2)
-    for(let r=0;r<3;r++){if(!oppField[r])continue;for(let c=0;c<COLS;c++){
-      // Определяем позицию с учётом зеркалирования
-      let tr=r, tc=c;
-      if(!pvpIsHost){tr=2-r; tc=(COLS-1)-c;}
-      if(oppField[r][c]&&oppField[r][c].u){
-        grid[tr][tc].unit=oppField[r][c].u;
-        grid[tr][tc].hp=oppField[r][c].h;
-        grid[tr][tc].maxHp=oppField[r][c].mh;
-        grid[tr][tc].damage=oppField[r][c].d||0;
-        grid[tr][tc].attackRange=oppField[r][c].ar||1;
-        grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
-      }else{
-        grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;
+    const oppField=snap.val();
+    console.log('📥 Получены данные противника:',oppField?'да':'нет');
+    if(!oppField){return;}
+    
+    for(let r=0;r<3;r++){
+      if(!oppField[r])continue;
+      for(let c=0;c<COLS;c++){
+        let tr=r, tc=c;
+        if(!pvpIsHost){tr=2-r; tc=(COLS-1)-c;}
+        
+        if(oppField[r][c]&&oppField[r][c].u){
+          console.log('✅ Юнит противника на ряду',r,'колонке',c,'-> мой ряд',tr,'колонка',tc,':',oppField[r][c].u);
+          grid[tr][tc].unit=oppField[r][c].u;
+          grid[tr][tc].hp=oppField[r][c].h||10;
+          grid[tr][tc].maxHp=oppField[r][c].mh||10;
+          grid[tr][tc].damage=oppField[r][c].d||0;
+          grid[tr][tc].attackRange=oppField[r][c].ar||1;
+          grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
+        }else{
+          grid[tr][tc].unit=null;
+          grid[tr][tc].hp=0;
+          grid[tr][tc].cardData=null;
+        }
       }
-    }}
+    }
   });
 }
 
