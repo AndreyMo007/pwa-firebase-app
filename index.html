@@ -161,7 +161,7 @@ function drawGrid(){
     ctx.fillStyle=cell.color;ctx.beginPath();ctx.roundRect(x,y,cellSize,cellSize,cr);ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.stroke();
     if(r===selectedUnitRow&&c===selectedUnitCol){ctx.fillStyle='rgba(255,215,0,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill();ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.stroke()}
-    if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'){ctx.fillStyle='rgba(255,255,100,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill()}
+    if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'&&isPlayerTurn){ctx.fillStyle='rgba(255,255,100,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill()}
     if(cell.unit){ctx.fillStyle='#fff';ctx.font=(cellSize*0.35)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cell.unit,x+cellSize/2,y+cellSize/2-cellSize*0.1);
       const bw=cellSize*0.75,bh=4,bx=x+(cellSize-bw)/2,by=y+cellSize-7;ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);const pct=cell.hp/cell.maxHp;ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';ctx.fillRect(bx,by,bw*pct,bh);
       ctx.fillStyle='#fff';ctx.font='bold '+Math.max(6,cellSize*0.16)+'px Arial';ctx.textAlign='center';ctx.fillText(Math.ceil(cell.hp)+'/'+cell.maxHp,x+cellSize/2,y+cellSize-10)}}}
@@ -185,27 +185,31 @@ function startPlacementPhase(){
   availableCards=shuffleArray(ALL_CARDS).slice(0,5);purchasedCards=[];selectedPurchasedCard=null;renderCards();
   timerSeconds=20;document.getElementById('game-timer').textContent=timerSeconds;
   if(timerInterval)clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{timerSeconds--;document.getElementById('game-timer').textContent=timerSeconds;if(timerSeconds<=0){clearInterval(timerInterval);startBattlePhase()}},1000);
+  timerInterval=setInterval(()=>{timerSeconds--;document.getElementById('game-timer').textContent=timerSeconds;if(timerSeconds<=0){clearInterval(timerInterval);startBattlePhase();}},1000);
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function startBattlePhase(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null}
-  gamePhase='playerTurn';const{playerMoves,enemyMoves}=checkMoves();
+  gamePhase='playerTurn';
+  const{playerMoves,enemyMoves}=checkMoves();
   isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
   updatePhaseDisplay();document.getElementById('game-timer').textContent='';
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function processTurn(){
   const{playerMoves,enemyMoves}=checkMoves();
   if(playerMoves===0||enemyMoves===0){startPlacementPhase();return}
   isPlayerTurn=!isPlayerTurn;updatePhaseDisplay();
+  if(currentMode==='pvp')syncStateToFB();
 }
 
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
-// ====== PVP СИНХРОНИЗАЦИЯ (ИСПРАВЛЕНО ЗЕРКАЛИРОВАНИЕ) ======
+// ====== PVP СИНХРОНИЗАЦИЯ ======
 function saveMyField(){
   if(!pvpRoom)return;
   const myField=[[],[],[]];
@@ -213,85 +217,96 @@ function saveMyField(){
   set(ref(db,'pvp_fields/'+pvpRoom+'/'+playerId),myField);
 }
 
+function syncStateToFB(){
+  if(!pvpRoom)return;
+  set(ref(db,'rooms/'+pvpRoom+'/state'),{
+    phase:gamePhase,
+    isPlayerTurn:isPlayerTurn,
+    timerSeconds:timerSeconds,
+    currentPlayer:isPlayerTurn?playerId:pvpOpponentId
+  });
+}
+
 function watchOpponentField(){
   if(!pvpRoom||!pvpOpponentId)return;
-  console.log('👀 Слушаю поле оппонента:',pvpOpponentId);
-  const opponentRef = ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId);
+  const opponentRef=ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId);
   onValue(opponentRef,(snap)=>{
-    const oppField=snap.val();
-    if(!oppField)return;
+    const oppField=snap.val();if(!oppField)return;
     for(let r=0;r<3;r++){if(!oppField[r])continue;for(let c=0;c<COLS;c++){
-      // Зеркалирование для ВСЕХ (и хоста и гостя)
-      // Враг видит наше поле перевёрнутым: левый верх -> правый низ
-      let tr=2-r;      // 0->2, 1->1, 2->0
-      let tc=3-c;      // 0->3, 1->2, 2->1, 3->0
+      let tr=2-r,tc=3-c;
       if(oppField[r][c]&&oppField[r][c].u){
-        grid[tr][tc].unit=oppField[r][c].u;
-        grid[tr][tc].hp=oppField[r][c].h;
-        grid[tr][tc].maxHp=oppField[r][c].mh;
-        grid[tr][tc].damage=oppField[r][c].d||0;
-        grid[tr][tc].attackRange=oppField[r][c].ar||1;
+        grid[tr][tc].unit=oppField[r][c].u;grid[tr][tc].hp=oppField[r][c].h;grid[tr][tc].maxHp=oppField[r][c].mh;
+        grid[tr][tc].damage=oppField[r][c].d||0;grid[tr][tc].attackRange=oppField[r][c].ar||1;
         grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
       }
     }}
   });
 }
 
+function watchGameState(){
+  if(!pvpRoom)return;
+  onValue(ref(db,'rooms/'+pvpRoom+'/state'),(snap)=>{
+    const s=snap.val();if(!s)return;
+    // Обновляем состояние только если ход не наш
+    if(s.currentPlayer!==playerId){
+      gamePhase=s.phase;
+      isPlayerTurn=false;
+      timerSeconds=s.timerSeconds||20;
+      updatePhaseDisplay();
+      if(gamePhase==='placement'){
+        document.getElementById('game-timer').textContent=timerSeconds;
+      }
+    }
+  });
+}
+
 function startPvP(){
   document.getElementById('pvp-waiting').classList.add('active');
-  let resolved = false;
-  const unsubSignal = onValue(ref(db,'pvp_signals/'+playerId), (snap) => {
-    if(resolved || pvpRoom) return;
-    const sig = snap.val();
-    if(sig && sig.roomId) {
-      resolved = true;
-      pvpRoom = sig.roomId;
-      pvpOpponentId = sig.hostId;
-      pvpIsHost = false;
-      console.log('🎮 ГОСТЬ! Комната:', pvpRoom);
-      remove(ref(db,'pvp_signals/'+playerId));
-      remove(ref(db,'pvp_queue/'+playerId));
+  let resolved=false;
+  const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
+    if(resolved||pvpRoom)return;
+    const sig=snap.val();
+    if(sig&&sig.roomId){
+      resolved=true;
+      pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
+      console.log('🎮 ГОСТЬ! Комната:',pvpRoom);
+      remove(ref(db,'pvp_signals/'+playerId));remove(ref(db,'pvp_queue/'+playerId));
       unsubSignal();
       initGrid(true);
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
-      setTimeout(() => watchOpponentField(), 500);
+      setTimeout(()=>{watchOpponentField();watchGameState();},500);
     }
   });
-  set(ref(db,'pvp_queue/'+playerId), {playerId: playerId, time: Date.now()});
-  setTimeout(() => {
-    if(resolved || pvpRoom) return;
-    const unsubQueue = onValue(ref(db,'pvp_queue'), (snap) => {
-      if(resolved || pvpRoom) return;
-      const data = snap.val();
-      if(!data) return;
-      const others = Object.entries(data).filter(([key]) => key !== playerId);
-      if(others.length > 0) {
-        resolved = true;
-        const [oppKey] = others[0];
-        pvpRoom = 'room_' + Date.now();
-        pvpOpponentId = oppKey;
-        pvpIsHost = true;
-        console.log('🎮 ХОСТ! Комната:', pvpRoom);
-        remove(ref(db,'pvp_queue/'+playerId));
-        remove(ref(db,'pvp_queue/'+oppKey));
+  set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,time:Date.now()});
+  setTimeout(()=>{
+    if(resolved||pvpRoom)return;
+    const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
+      if(resolved||pvpRoom)return;
+      const data=snap.val();if(!data)return;
+      const others=Object.entries(data).filter(([key])=>key!==playerId);
+      if(others.length>0){
+        resolved=true;
+        const[oppKey]=others[0];
+        pvpRoom='room_'+Date.now();pvpOpponentId=oppKey;pvpIsHost=true;
+        console.log('🎮 ХОСТ! Комната:',pvpRoom);
+        remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_queue/'+oppKey));
         unsubQueue();
         initGrid(true);
-        set(ref(db,'pvp_signals/'+oppKey), {roomId: pvpRoom, hostId: playerId});
+        set(ref(db,'pvp_signals/'+oppKey),{roomId:pvpRoom,hostId:playerId});
         document.getElementById('pvp-waiting').classList.remove('active');
         startGame();
-        setTimeout(() => watchOpponentField(), 500);
+        setTimeout(()=>{watchOpponentField();watchGameState();},500);
       }
     });
-  }, 2000);
-  setTimeout(() => {
-    if(!resolved && document.getElementById('pvp-waiting').classList.contains('active')) {
-      remove(ref(db,'pvp_queue/'+playerId));
-      remove(ref(db,'pvp_signals/'+playerId));
+  },2000);
+  setTimeout(()=>{
+    if(!resolved&&document.getElementById('pvp-waiting').classList.contains('active')){
+      remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));
       document.getElementById('pvp-waiting').classList.remove('active');
       alert('Соперник не найден');
     }
-  }, 30000);
+  },30000);
 }
 
 function startGame(){
@@ -307,7 +322,7 @@ document.getElementById('mode-classic').onclick=()=>{currentMode='classic';docum
 document.getElementById('mode-pvp').onclick=()=>{currentMode='pvp';document.getElementById('mode-modal').classList.remove('active');document.getElementById('mode-button').textContent='👥 PvP'};
 document.getElementById('mode-close').onclick=()=>{document.getElementById('mode-modal').classList.remove('active')};
 document.getElementById('pvp-cancel').onclick=()=>{remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));document.getElementById('pvp-waiting').classList.remove('active')};
-document.getElementById('back-button').onclick=()=>{if(timerInterval)clearInterval(timerInterval);if(gameLoopId)cancelAnimationFrame(gameLoopId);if(pvpRoom)remove(ref(db,'pvp_fields/'+pvpRoom));gameScreen.classList.remove('active');showLobby()};
+document.getElementById('back-button').onclick=()=>{if(timerInterval)clearInterval(timerInterval);if(gameLoopId)cancelAnimationFrame(gameLoopId);if(pvpRoom){remove(ref(db,'pvp_fields/'+pvpRoom));remove(ref(db,'rooms/'+pvpRoom));}gameScreen.classList.remove('active');showLobby()};
 document.getElementById('nav-home').onclick=()=>{document.getElementById('home-page').style.display='flex';document.getElementById('cards-page').classList.remove('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-home').classList.add('active')};
 document.getElementById('nav-cards').onclick=()=>{document.getElementById('home-page').style.display='none';document.getElementById('cards-page').classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById('nav-cards').classList.add('active');renderAllCardsPage()};
 
