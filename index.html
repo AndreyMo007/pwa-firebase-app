@@ -238,59 +238,76 @@ function watchOpponentField(){
 function startPvP(){
   document.getElementById('pvp-waiting').classList.add('active');
   
-  // Слушаем сигнал
-  const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
-    if(pvpRoom)return;
-    const sig=snap.val();
-    if(sig&&sig.roomId){
-      pvpRoom=sig.roomId;
-      pvpOpponentId=sig.hostId;
-      pvpIsHost=false;
-      console.log('🎮 ГОСТЬ. Комната:',pvpRoom);
+  let resolved = false;
+  
+  // ГОСТЬ: ждём сигнал
+  const unsubSignal = onValue(ref(db,'pvp_signals/'+playerId), (snap) => {
+    if(resolved || pvpRoom) return;
+    const sig = snap.val();
+    console.log('📡 Сигнал:', sig);
+    if(sig && sig.roomId) {
+      resolved = true;
+      pvpRoom = sig.roomId;
+      pvpOpponentId = sig.hostId;
+      pvpIsHost = false;
+      console.log('🎮 ГОСТЬ! Комната:', pvpRoom);
       remove(ref(db,'pvp_signals/'+playerId));
       remove(ref(db,'pvp_queue/'+playerId));
       unsubSignal();
       initGrid(true);
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
-      setTimeout(()=>watchOpponentField(),500);
+      setTimeout(() => watchOpponentField(), 500);
     }
   });
   
   // Добавляемся в очередь
-  set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,time:Date.now()});
+  set(ref(db,'pvp_queue/'+playerId), {playerId: playerId, time: Date.now()});
+  console.log('🔍 В очереди:', playerId);
   
-  // Ищем соперника
-  const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
-    if(pvpRoom)return;
-    const data=snap.val();if(!data)return;
-    const waiting=Object.values(data).filter(p=>p.playerId!==playerId);
-    if(waiting.length>0){
-      const opp=waiting[0];
-      pvpRoom='room_'+Date.now();
-      pvpOpponentId=opp.playerId;
-      pvpIsHost=true;
-      console.log('🎮 ХОСТ. Комната:',pvpRoom);
-      remove(ref(db,'pvp_queue/'+playerId));
-      remove(ref(db,'pvp_queue/'+opp.playerId));
-      unsubQueue();
-      initGrid(true);
-      set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
-      document.getElementById('pvp-waiting').classList.remove('active');
-      startGame();
-      setTimeout(()=>watchOpponentField(),500);
-    }
-  });
+  // ХОСТ: ищем с ЗАДЕРЖКОЙ 2 секунды (даём гостю время подписаться на сигнал)
+  setTimeout(() => {
+    if(resolved || pvpRoom) return;
+    
+    const unsubQueue = onValue(ref(db,'pvp_queue'), (snap) => {
+      if(resolved || pvpRoom) return;
+      const data = snap.val();
+      if(!data) return;
+      
+      const others = Object.entries(data).filter(([key]) => key !== playerId);
+      console.log('📋 Другие:', others.length);
+      
+      if(others.length > 0) {
+        resolved = true;
+        const [oppKey] = others[0];
+        pvpRoom = 'room_' + Date.now();
+        pvpOpponentId = oppKey;
+        pvpIsHost = true;
+        
+        console.log('🎮 ХОСТ! Комната:', pvpRoom);
+        remove(ref(db,'pvp_queue/'+playerId));
+        remove(ref(db,'pvp_queue/'+oppKey));
+        unsubQueue();
+        initGrid(true);
+        
+        console.log('📤 Сигнал ->', oppKey);
+        set(ref(db,'pvp_signals/'+oppKey), {roomId: pvpRoom, hostId: playerId});
+        
+        document.getElementById('pvp-waiting').classList.remove('active');
+        startGame();
+        setTimeout(() => watchOpponentField(), 500);
+      }
+    });
+  }, 2000); // ЗАДЕРЖКА 2 секунды!
   
-  setTimeout(()=>{
-    if(document.getElementById('pvp-waiting').classList.contains('active')){
+  setTimeout(() => {
+    if(!resolved && document.getElementById('pvp-waiting').classList.contains('active')) {
       remove(ref(db,'pvp_queue/'+playerId));
       remove(ref(db,'pvp_signals/'+playerId));
-      unsubQueue();unsubSignal();
       document.getElementById('pvp-waiting').classList.remove('active');
       alert('Соперник не найден');
     }
-  },30000);
+  }, 30000);
 }
 
 function startGame(){
