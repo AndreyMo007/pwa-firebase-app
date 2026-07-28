@@ -237,63 +237,60 @@ function watchOpponentField(){
 
 function startPvP(){
   document.getElementById('pvp-waiting').classList.add('active');
-  set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,status:'waiting',time:Date.now()});
-  console.log('🔍 Мой ID:',playerId,'Ищу соперника...');
   
-  let alreadyMatched = false;
-  let unsubQueue;
-  
-  // Сначала слушаем сигнал (для гостя)
+  // Слушаем сигнал
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
-    if(alreadyMatched||pvpRoom)return;
-    const sig=snap.val();if(!sig||!sig.roomId)return;
-    
-    alreadyMatched=true;
-    pvpRoom=sig.roomId;
-    pvpOpponentId=sig.hostId;
-    pvpIsHost=false;
-    
-    console.log('🎮 Я ГОСТЬ. Комната:',pvpRoom,'Оппонент:',pvpOpponentId);
-    remove(ref(db,'pvp_signals/'+playerId));
-    remove(ref(db,'pvp_queue/'+playerId));
-    unsubSignal();
-    if(unsubQueue)unsubQueue();
-    
-    initGrid(true);
-    document.getElementById('pvp-waiting').classList.remove('active');
-    startGame();
-    setTimeout(()=>{watchOpponentField();},500);
+    if(pvpRoom)return;
+    const sig=snap.val();
+    if(sig&&sig.roomId){
+      pvpRoom=sig.roomId;
+      pvpOpponentId=sig.hostId;
+      pvpIsHost=false;
+      console.log('🎮 ГОСТЬ. Комната:',pvpRoom);
+      remove(ref(db,'pvp_signals/'+playerId));
+      remove(ref(db,'pvp_queue/'+playerId));
+      unsubSignal();
+      initGrid(true);
+      document.getElementById('pvp-waiting').classList.remove('active');
+      startGame();
+      setTimeout(()=>watchOpponentField(),500);
+    }
   });
   
-  // Потом ищем в очереди (для хоста)
-  unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
-    if(alreadyMatched||pvpRoom)return;
+  // Добавляемся в очередь
+  set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,time:Date.now()});
+  
+  // Ищем соперника
+  const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
+    if(pvpRoom)return;
     const data=snap.val();if(!data)return;
-    const waiting=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
-    
+    const waiting=Object.values(data).filter(p=>p.playerId!==playerId);
     if(waiting.length>0){
-      alreadyMatched=true;
       const opp=waiting[0];
       pvpRoom='room_'+Date.now();
       pvpOpponentId=opp.playerId;
       pvpIsHost=true;
-      
-      console.log('🎮 Я ХОСТ. Комната:',pvpRoom,'Оппонент:',pvpOpponentId);
+      console.log('🎮 ХОСТ. Комната:',pvpRoom);
       remove(ref(db,'pvp_queue/'+playerId));
       remove(ref(db,'pvp_queue/'+opp.playerId));
       unsubQueue();
-      unsubSignal();
-      
       initGrid(true);
       set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
-      
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
-      setTimeout(()=>{watchOpponentField();},500);
+      setTimeout(()=>watchOpponentField(),500);
     }
   });
   
-  setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
+  setTimeout(()=>{
+    if(document.getElementById('pvp-waiting').classList.contains('active')){
+      remove(ref(db,'pvp_queue/'+playerId));
+      remove(ref(db,'pvp_signals/'+playerId));
+      unsubQueue();unsubSignal();
+      document.getElementById('pvp-waiting').classList.remove('active');
+      alert('Соперник не найден');
+    }
+  },30000);
 }
 
 function startGame(){
