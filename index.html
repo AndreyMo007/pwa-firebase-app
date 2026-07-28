@@ -238,21 +238,44 @@ function watchOpponentField(){
 function startPvP(){
   document.getElementById('pvp-waiting').classList.add('active');
   set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,status:'waiting',time:Date.now()});
+  console.log('🔍 Мой ID:',playerId,'Ищу соперника...');
+  
   const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{
     const data=snap.val();if(!data||pvpRoom)return;
     const waiting=Object.values(data).filter(p=>p.status==='waiting'&&p.playerId!==playerId);
+    console.log('📋 Очередь:',waiting.length,'игроков');
     if(waiting.length>0){
       const opp=waiting[0];
-      pvpRoom='room_'+Date.now();pvpOpponentId=opp.playerId;pvpIsHost=true;
-      remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_queue/'+opp.playerId));
+      pvpRoom='room_'+Date.now();
+      pvpOpponentId=opp.playerId; // ВАЖНО: сохраняем ID ПРОТИВНИКА
+      pvpIsHost=true;
+      console.log('🎮 Я ХОСТ. Комната:',pvpRoom,'Мой ID:',playerId,'Оппонент ID:',pvpOpponentId);
+      remove(ref(db,'pvp_queue/'+playerId));
+      remove(ref(db,'pvp_queue/'+opp.playerId));
       unsubQueue();
       initGrid(true);
       set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
-      setTimeout(()=>{watchOpponentField();},500);
+      setTimeout(()=>{console.log('👀 Подключаюсь к оппоненту:',pvpOpponentId);watchOpponentField();},500);
     }
   });
+  
+  const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
+    const sig=snap.val();if(!sig||!sig.roomId||pvpRoom)return;
+    pvpRoom=sig.roomId;
+    pvpOpponentId=sig.hostId; // ВАЖНО: сохраняем ID ПРОТИВНИКА (хоста)
+    pvpIsHost=false;
+    console.log('🎮 Я ГОСТЬ. Комната:',pvpRoom,'Мой ID:',playerId,'Оппонент ID:',pvpOpponentId);
+    remove(ref(db,'pvp_signals/'+playerId));unsubSignal();
+    initGrid(true);
+    document.getElementById('pvp-waiting').classList.remove('active');
+    startGame();
+    setTimeout(()=>{console.log('👀 Подключаюсь к оппоненту:',pvpOpponentId);watchOpponentField();},500);
+  });
+  
+  setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
+}
   const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{
     const sig=snap.val();if(!sig||!sig.roomId||pvpRoom)return;
     pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;
