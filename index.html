@@ -93,10 +93,23 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const fc={apiKey:"AIzaSyChtJQjMl8yAK3DYPIpnd6bw-tC44X-Wk8",authDomain:"clash-of-mas-2c0fc.firebaseapp.com",databaseURL:"https://clash-of-mas-2c0fc-default-rtdb.europe-west1.firebasedatabase.app",projectId:"clash-of-mas-2c0fc",storageBucket:"clash-of-mas-2c0fc.firebasestorage.app",messagingSenderId:"127863621457",appId:"1:127863621457:web:3137db5d7f9e9878b1f570"};
-const app=initializeApp(fc),db=getDatabase(app);
-const isYG=typeof YaGames!=='undefined';
-if('serviceWorker' in navigator&&!isYG)navigator.serviceWorker.register('sw.js').catch(()=>{});
+// НОВЫЙ FIREBASE КОНФИГ
+const fc = {
+  apiKey: "AIzaSyCgx-V8GP_cgCZLGws2e1pHZ5OnMy20nxk",
+  authDomain: "clash-of-mas.firebaseapp.com",
+  databaseURL: "https://clash-of-mas-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "clash-of-mas",
+  storageBucket: "clash-of-mas.firebasestorage.app",
+  messagingSenderId: "403759349179",
+  appId: "1:403759349179:web:61c27cff4f31ec644a589e"
+};
+
+const app = initializeApp(fc);
+const db = getDatabase(app);
+const isYG = typeof YaGames !== 'undefined';
+if('serviceWorker' in navigator && !isYG) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+console.log('🔥 Firebase подключен:', fc.projectId);
 
 const RARITY_COLORS={common:'linear-gradient(90deg,#777,#999)',rare:'linear-gradient(90deg,#4d96ff,#6bcb77)',epic:'linear-gradient(90deg,#c440ff,#ffd93d)',legendary:'linear-gradient(90deg,#ff5555,#ffd93d,#ff5555)'};
 const ALL_CARDS=[{id:'warrior',name:'Воин',emoji:'⚔️',cost:3,hp:10,damage:4,attackRange:1,maxHp:10,rarity:'common'},{id:'archer',name:'Лучник',emoji:'🏹',cost:2,hp:6,damage:3,attackRange:3,maxHp:6,rarity:'common'},{id:'giant',name:'Гигант',emoji:'🦍',cost:5,hp:18,damage:2,attackRange:1,maxHp:18,rarity:'rare'},{id:'mage',name:'Маг',emoji:'🧙',cost:4,hp:7,damage:5,attackRange:2,maxHp:7,rarity:'rare'},{id:'goblin',name:'Гоблин',emoji:'👺',cost:1,hp:4,damage:2,attackRange:1,maxHp:4,rarity:'common'},{id:'knight',name:'Рыцарь',emoji:'🛡️',cost:3,hp:12,damage:3,attackRange:1,maxHp:12,rarity:'rare'},{id:'dragon',name:'Дракон',emoji:'🐉',cost:6,hp:14,damage:6,attackRange:2,maxHp:14,rarity:'epic'},{id:'healer',name:'Целитель',emoji:'💚',cost:3,hp:8,damage:0,attackRange:1,maxHp:8,heal:3,rarity:'rare'},{id:'assassin',name:'Ассасин',emoji:'🗡️',cost:2,hp:5,damage:5,attackRange:1,maxHp:5,rarity:'epic'},{id:'golem',name:'Голем',emoji:'🗿',cost:7,hp:22,damage:1,attackRange:1,maxHp:22,rarity:'legendary'}];
@@ -196,48 +209,27 @@ function processTurn(){
 function gameLoop(){drawGrid();gameLoopId=requestAnimationFrame(gameLoop)}
 function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 
-// ====== НОВАЯ СИСТЕМА PVP СИНХРОНИЗАЦИИ ======
-// Каждый игрок сохраняет СВОЁ поле в Firebase по пути: pvp_fields/{roomId}/{playerId}
-// И слушает поле противника по пути: pvp_fields/{roomId}/{opponentId}
-
+// ====== PVP СИНХРОНИЗАЦИЯ ======
 function saveMyField(){
-  if(!pvpRoom){console.log('❌ Нет комнаты');return;}
+  if(!pvpRoom)return;
   const myField=[[],[],[]];
   for(let r=3;r<6;r++){for(let c=0;c<COLS;c++){const cell=grid[r][c];myField[r-3][c]=cell.unit?{u:cell.unit,h:cell.hp,mh:cell.maxHp,d:cell.damage,ar:cell.attackRange}:null}}
   set(ref(db,'pvp_fields/'+pvpRoom+'/'+playerId),myField);
-  console.log('📤 Моё поле сохранено. Юниты в рядах 3-5:',myField[0].filter(x=>x).length,myField[1].filter(x=>x).length,myField[2].filter(x=>x).length);
 }
 
 function watchOpponentField(){
-  if(!pvpRoom||!pvpOpponentId){console.log('❌ Нет комнаты или оппонента');return;}
-  console.log('👀 Начинаю следить за противником:',pvpOpponentId,'в комнате:',pvpRoom);
-  
+  if(!pvpRoom||!pvpOpponentId)return;
   onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
-    const oppField=snap.val();
-    console.log('📥 Получены данные противника:',oppField?'да':'нет');
-    if(!oppField){return;}
-    
-    for(let r=0;r<3;r++){
-      if(!oppField[r])continue;
-      for(let c=0;c<COLS;c++){
-        let tr=r, tc=c;
-        if(!pvpIsHost){tr=2-r; tc=(COLS-1)-c;}
-        
-        if(oppField[r][c]&&oppField[r][c].u){
-          console.log('✅ Юнит противника на ряду',r,'колонке',c,'-> мой ряд',tr,'колонка',tc,':',oppField[r][c].u);
-          grid[tr][tc].unit=oppField[r][c].u;
-          grid[tr][tc].hp=oppField[r][c].h||10;
-          grid[tr][tc].maxHp=oppField[r][c].mh||10;
-          grid[tr][tc].damage=oppField[r][c].d||0;
-          grid[tr][tc].attackRange=oppField[r][c].ar||1;
-          grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
-        }else{
-          grid[tr][tc].unit=null;
-          grid[tr][tc].hp=0;
-          grid[tr][tc].cardData=null;
-        }
-      }
-    }
+    const oppField=snap.val();if(!oppField)return;
+    for(let r=0;r<3;r++){if(!oppField[r])continue;for(let c=0;c<COLS;c++){
+      let tr=r,tc=c;
+      if(!pvpIsHost){tr=2-r;tc=(COLS-1)-c;}
+      if(oppField[r][c]&&oppField[r][c].u){
+        grid[tr][tc].unit=oppField[r][c].u;grid[tr][tc].hp=oppField[r][c].h;grid[tr][tc].maxHp=oppField[r][c].mh;
+        grid[tr][tc].damage=oppField[r][c].d||0;grid[tr][tc].attackRange=oppField[r][c].ar||1;
+        grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
+      }else{grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;}
+    }}
   });
 }
 
@@ -254,12 +246,9 @@ function startPvP(){
       remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_queue/'+opp.playerId));
       unsubQueue();
       initGrid(true);
-      // Отправляем сигнал гостю
       set(ref(db,'pvp_signals/'+opp.playerId),{roomId:pvpRoom,hostId:playerId});
       document.getElementById('pvp-waiting').classList.remove('active');
-      // Запускаем игру и следим за противником
-      watchOpponentField();
-      startGame();
+      watchOpponentField();startGame();
     }
   });
   
@@ -269,9 +258,7 @@ function startPvP(){
     remove(ref(db,'pvp_signals/'+playerId));unsubSignal();
     initGrid(true);
     document.getElementById('pvp-waiting').classList.remove('active');
-    // Запускаем игру и следим за противником
-    watchOpponentField();
-    startGame();
+    watchOpponentField();startGame();
   });
   
   setTimeout(()=>{if(document.getElementById('pvp-waiting').classList.contains('active')){remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));unsubQueue();unsubSignal();document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден')}},30000);
