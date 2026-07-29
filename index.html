@@ -160,17 +160,20 @@ function syncAttack(row,col){
 }
 
 // ====== ПОЛУЧЕНИЕ АТАКИ (БЕЗ ЗЕРКАЛИРОВАНИЯ) ======
+// ====== ПОЛУЧЕНИЕ АТАКИ ПРОТИВНИКА (ЗЕРКАЛИРОВАНИЕ КАК У ЮНИТОВ) ======
 function watchOpponentAttack(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();if(!a||Date.now()-a.time>2000)return;
     console.log('⚔️ Атака противника! Атакующий на ('+a.attackerRow+','+a.attackerCol+')');
     
-    // Используем ОРИГИНАЛЬНЫЕ координаты (без зеркалирования)
-    let showRow = a.attackerRow;
-    let showCol = a.attackerCol;
+    // Точно такое же зеркалирование как у юнитов в watchOpponentField():
+    // tr = 2 - r  (переворот по вертикали)
+    // tc = 3 - c  (переворот по горизонтали)
+    let showRow = 2 - a.attackerRow;
+    let showCol = 3 - a.attackerCol;
     
-    console.log('🎯 Показываю атаку на позиции ('+showRow+','+showCol+')');
+    console.log('🪞 Зеркальная позиция атаки: ('+showRow+','+showCol+')');
     
     // Временно подменяем клетку для calculateHighlights
     const origCell = grid[showRow] ? (grid[showRow][showCol] ? {...grid[showRow][showCol]} : null) : null;
