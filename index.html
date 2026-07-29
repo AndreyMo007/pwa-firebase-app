@@ -159,49 +159,64 @@ function syncAttack(row,col){
   });
 }
 
-// ====== ПОЛУЧЕНИЕ АТАКИ (БЕЗ ЗЕРКАЛИРОВАНИЯ) ======
 // ====== ПОЛУЧЕНИЕ АТАКИ ПРОТИВНИКА (ЗЕРКАЛИРОВАНИЕ КАК У ЮНИТОВ) ======
-// ====== ПОЛУЧЕНИЕ АТАКИ ПРОТИВНИКА (ЗЕРКАЛИРОВАНИЕ + ОТЛАДКА) ======
 function watchOpponentAttack(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();if(!a||Date.now()-a.time>2000)return;
     console.log('⚔️ Атака противника! Оригинал: ряд='+a.attackerRow+' кол='+a.attackerCol+' урон='+a.damage+' дальность='+a.attackRange);
     
-    // Зеркалирование как у юнитов
+    // Зеркалирование как у юнитов (такое же как в watchOpponentField)
     let showRow = 2 - a.attackerRow;
     let showCol = 3 - a.attackerCol;
     
     console.log('🪞 Зеркальная позиция: ряд='+showRow+' кол='+showCol);
-    console.log('📋 Клетка до подмены:', grid[showRow]&&grid[showRow][showCol] ? JSON.stringify({unit:grid[showRow][showCol].unit,hp:grid[showRow][showCol].hp}) : 'пусто');
     
-    // Сохраняем оригинал
-    const origCell = grid[showRow] && grid[showRow][showCol] ? {...grid[showRow][showCol]} : null;
+    // Сохраняем оригинальную клетку
+    const origCell = grid[showRow] && grid[showRow][showCol] ? {
+      unit: grid[showRow][showCol].unit,
+      hp: grid[showRow][showCol].hp,
+      maxHp: grid[showRow][showCol].maxHp,
+      damage: grid[showRow][showCol].damage,
+      attackRange: grid[showRow][showCol].attackRange,
+      heal: grid[showRow][showCol].heal,
+      cardData: grid[showRow][showCol].cardData
+    } : null;
     
-    // Подменяем клетку - создаём временного юнита для атаки
+    // Создаём временную клетку если её нет
     if(!grid[showRow]) grid[showRow] = [];
-    if(!grid[showRow][showCol]) grid[showRow][showCol] = {color:'#ff4444',unit:null,hp:0,maxHp:0,damage:0,attackRange:0,heal:0,hasMovedThisRound:false,cardData:null};
+    if(!grid[showRow][showCol]) {
+      grid[showRow][showCol] = {
+        color: '#ff4444', unit: null, hp: 0, maxHp: 0,
+        damage: 0, attackRange: 0, heal: 0,
+        hasMovedThisRound: false, cardData: null
+      };
+    }
     
-    // Устанавливаем данные атаки
-    grid[showRow][showCol].unit = '⚔️'; // Временная иконка
+    // Устанавливаем временные данные для атаки
+    grid[showRow][showCol].unit = '⚔️';
     grid[showRow][showCol].damage = a.damage;
     grid[showRow][showCol].attackRange = a.attackRange;
     grid[showRow][showCol].heal = 0;
     
-    console.log('📋 Клетка после подмены: unit='+grid[showRow][showCol].unit+' damage='+grid[showRow][showCol].damage+' range='+grid[showRow][showCol].attackRange);
-    
-    // Вызываем calculateHighlights
+    // Вызываем calculateHighlights для показа зоны атаки
     highlightedCells = calculateHighlights(showRow, showCol);
     
     console.log('🎯 Подсвечено клеток:', highlightedCells.length);
-    highlightedCells.forEach(h => console.log('  - ряд='+h.row+' кол='+h.col+' цвет='+h.color+' текст='+h.text));
     
-    // Восстанавливаем оригинал
+    // Восстанавливаем оригинальную клетку
     if(origCell){
-      grid[showRow][showCol] = {...origCell};
+      grid[showRow][showCol].unit = origCell.unit;
+      grid[showRow][showCol].hp = origCell.hp;
+      grid[showRow][showCol].maxHp = origCell.maxHp;
+      grid[showRow][showCol].damage = origCell.damage;
+      grid[showRow][showCol].attackRange = origCell.attackRange;
+      grid[showRow][showCol].heal = origCell.heal;
+      grid[showRow][showCol].cardData = origCell.cardData;
     } else {
       grid[showRow][showCol].unit = null;
       grid[showRow][showCol].hp = 0;
+      grid[showRow][showCol].maxHp = 0;
       grid[showRow][showCol].damage = 0;
       grid[showRow][showCol].attackRange = 0;
       grid[showRow][showCol].heal = 0;
