@@ -141,35 +141,58 @@ function showLobby(){lobby.classList.add('active');lobby.style.display='flex'}
 // ====== PVP СИНХРОНИЗАЦИЯ ======
 function saveMyField(){if(!pvpRoom)return;const myField=[[],[],[]];for(let r=3;r<6;r++){for(let c=0;c<COLS;c++){const cell=grid[r][c];myField[r-3][c]=cell.unit?{u:cell.unit,h:cell.hp,mh:cell.maxHp,d:cell.damage,ar:cell.attackRange,hm:cell.hasMovedThisRound}:null}}set(ref(db,'pvp_fields/'+pvpRoom+'/'+playerId),myField);console.log('📤 Поле сохранено');}
 function syncStateToFB(){if(!pvpRoom)return;set(ref(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn:isPlayerTurn,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});console.log('📤 Состояние: фаза='+gamePhase+' ход='+(isPlayerTurn?'мой':'противника'));}
-function syncAttack(row,col){if(!pvpRoom)return;const cell=grid[row][col];if(!cell.unit)return;console.log('⚔️ Отправка атаки: атакующий на ('+row+','+col+') урон='+cell.damage+' дальность='+cell.attackRange);set(ref(db,'rooms/'+pvpRoom+'/attack'),{attackerRow:row,attackerCol:col,damage:cell.damage,attackRange:cell.attackRange,time:Date.now()});}
 function watchOpponentField(){if(!pvpRoom||!pvpOpponentId)return;console.log('👀 Слушаю поле оппонента:',pvpOpponentId);onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{const oppField=snap.val();if(!oppField){console.log('❌ Поле оппонента пустое');return;}console.log('📥 Получено поле оппонента');for(let r=0;r<3;r++){if(!oppField[r])continue;for(let c=0;c<COLS;c++){let tr=2-r,tc=3-c;if(oppField[r][c]&&oppField[r][c].u){grid[tr][tc].unit=oppField[r][c].u;grid[tr][tc].hp=oppField[r][c].h;grid[tr][tc].maxHp=oppField[r][c].mh;grid[tr][tc].damage=oppField[r][c].d||0;grid[tr][tc].attackRange=oppField[r][c].ar||1;grid[tr][tc].hasMovedThisRound=oppField[r][c].hm||false;grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};}else{grid[tr][tc].unit=null;grid[tr][tc].hp=0;grid[tr][tc].cardData=null;}}}});}
 function watchGameState(){if(!pvpRoom)return;onValue(ref(db,'rooms/'+pvpRoom+'/state'),(snap)=>{const s=snap.val();if(!s)return;console.log('📥 Состояние: фаза='+s.phase+' current='+s.currentPlayer+' я='+playerId);if(s.currentPlayer===playerId){gamePhase=s.phase;isPlayerTurn=true;updatePhaseDisplay();console.log('✅ Мой ход!');}else{gamePhase=s.phase;isPlayerTurn=false;updatePhaseDisplay();console.log('⏳ Ход противника');}});}
 
-// ====== ЗЕРКАЛЬНАЯ АТАКА НА 180 ГРАДУСОВ ======
+// ====== ОТПРАВКА АТАКИ (БЕЗ ЗЕРКАЛИРОВАНИЯ) ======
+function syncAttack(row,col){
+  if(!pvpRoom)return;
+  const cell=grid[row][col];
+  if(!cell.unit)return;
+  console.log('⚔️ Отправка атаки: атакующий на ('+row+','+col+') урон='+cell.damage+' дальность='+cell.attackRange);
+  set(ref(db,'rooms/'+pvpRoom+'/attack'),{
+    attackerRow:row,
+    attackerCol:col,
+    damage:cell.damage,
+    attackRange:cell.attackRange,
+    time:Date.now()
+  });
+}
+
+// ====== ПОЛУЧЕНИЕ АТАКИ (БЕЗ ЗЕРКАЛИРОВАНИЯ) ======
 function watchOpponentAttack(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();if(!a||Date.now()-a.time>2000)return;
-    console.log('⚔️ Зеркальная атака! Атакующий врага на ('+a.attackerRow+','+a.attackerCol+')');
-    // Зеркалим позицию атакующего на 180 градусов
-    let mirrorRow=a.attackerRow,mirrorCol=a.attackerCol;
-    if(!pvpIsHost){mirrorRow=2-a.attackerRow;mirrorCol=3-a.attackerCol;}
-    console.log('🪞 Зеркальная позиция атакующего: ('+mirrorRow+','+mirrorCol+')');
+    console.log('⚔️ Атака противника! Атакующий на ('+a.attackerRow+','+a.attackerCol+')');
+    
+    // Используем ОРИГИНАЛЬНЫЕ координаты (без зеркалирования)
+    let showRow = a.attackerRow;
+    let showCol = a.attackerCol;
+    
+    console.log('🎯 Показываю атаку на позиции ('+showRow+','+showCol+')');
+    
     // Временно подменяем клетку для calculateHighlights
-    const origCell=grid[mirrorRow]?grid[mirrorRow][mirrorCol]?{...grid[mirrorRow][mirrorCol]}:null:null;
-    if(grid[mirrorRow]&&grid[mirrorRow][mirrorCol]){
-      grid[mirrorRow][mirrorCol].unit=grid[mirrorRow][mirrorCol].unit||'?';
-      grid[mirrorRow][mirrorCol].damage=a.damage;
-      grid[mirrorRow][mirrorCol].attackRange=a.attackRange;
-      grid[mirrorRow][mirrorCol].heal=0;
+    const origCell = grid[showRow] ? (grid[showRow][showCol] ? {...grid[showRow][showCol]} : null) : null;
+    if(grid[showRow] && grid[showRow][showCol]){
+      grid[showRow][showCol].unit = grid[showRow][showCol].unit || '?';
+      grid[showRow][showCol].damage = a.damage;
+      grid[showRow][showCol].attackRange = a.attackRange;
+      grid[showRow][showCol].heal = 0;
     }
-    highlightedCells=calculateHighlights(mirrorRow,mirrorCol);
-    if(origCell&&grid[mirrorRow]&&grid[mirrorRow][mirrorCol]){
-      grid[mirrorRow][mirrorCol]={...origCell};
-    }else if(grid[mirrorRow]&&grid[mirrorRow][mirrorCol]&&!origCell){
-      grid[mirrorRow][mirrorCol].unit=null;grid[mirrorRow][mirrorCol].hp=0;grid[mirrorRow][mirrorCol].cardData=null;
+    
+    highlightedCells = calculateHighlights(showRow, showCol);
+    
+    // Восстанавливаем оригинальную клетку
+    if(origCell && grid[showRow] && grid[showRow][showCol]){
+      grid[showRow][showCol] = {...origCell};
+    } else if(grid[showRow] && grid[showRow][showCol] && !origCell){
+      grid[showRow][showCol].unit = null;
+      grid[showRow][showCol].hp = 0;
+      grid[showRow][showCol].cardData = null;
     }
-    console.log('🎯 Подсвечено клеток:',highlightedCells.length);
+    
+    console.log('🎯 Подсвечено клеток:', highlightedCells.length);
     setTimeout(()=>{highlightedCells=[];},1500);
   });
 }
