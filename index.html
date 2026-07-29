@@ -149,13 +149,15 @@ function syncAttack(row,col){
   if(!pvpRoom)return;
   const cell=grid[row][col];
   if(!cell.unit)return;
-  console.log('⚔️ Отправка атаки: атакующий на ('+row+','+col+') урон='+cell.damage+' дальность='+cell.attackRange);
+  // Пересчитываем ряд: 3->0, 4->1, 5->2 (отправляем как вражеский ряд)
+  const enemyRow = row - 3;
+  console.log('⚔️ Отправка атаки: атакующий на ('+enemyRow+','+col+') урон='+cell.damage+' дальность='+cell.attackRange);
   set(ref(db,'rooms/'+pvpRoom+'/attack'),{
-    attackerRow:row,
-    attackerCol:col,
-    damage:cell.damage,
-    attackRange:cell.attackRange,
-    time:Date.now()
+    attackerRow: enemyRow,  // Отправляем как ряд врага (0-2)
+    attackerCol: col,
+    damage: cell.damage,
+    attackRange: cell.attackRange,
+    time: Date.now()
   });
 }
 
