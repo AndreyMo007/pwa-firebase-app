@@ -173,66 +173,14 @@ function syncStateToFB(){if(!pvpRoom)return;set(ref(db,'rooms/'+pvpRoom+'/state'
 
 function watchOpponentField(){
   if(!pvpRoom||!pvpOpponentId)return;
-  
-  // Слушаем ИЗМЕНЕНИЯ НАШИХ ЮНИТОВ от атак противника
-  // Противник атакует наши ряды 3-5 и сохраняет их в pvp_enemy
-  // Мы читаем pvp_enemy и обновляем свои ряды 3-5
+  // Слушаем вражеское поле (изменения которые противник внёс в НАШИ ряды через атаку)
   onValue(ref(db,'pvp_enemy/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
-    const enemyChanges=snap.val();
-    if(!enemyChanges)return;
-    console.log('📥 Противник изменил наших юнитов! Новые HP:', enemyChanges.map(r=>r.map(c=>c?c.h+'/'+c.mh:0)));
-    // Обновляем НАШИ ряды 3-5 (противник изменил их своей атакой)
-    for(let r=0;r<3;r++){
-      if(!enemyChanges[r])continue;
-      for(let c=0;c<COLS;c++){
-        const ourRow=r+3; // Преобразуем 0-2 в 3-5 (наши ряды)
-        if(enemyChanges[r][c]&&enemyChanges[r][c].u){
-          // Обновляем HP нашего юнита
-          grid[ourRow][c].hp=enemyChanges[r][c].h;
-          grid[ourRow][c].maxHp=enemyChanges[r][c].mh;
-          // Если HP <= 0 - удаляем юнита
-          if(enemyChanges[r][c].h<=0){
-            grid[ourRow][c].unit=null;
-            grid[ourRow][c].hp=0;
-            grid[ourRow][c].cardData=null;
-            console.log('💀 Наш юнит уничтожен на ряду',ourRow,'колонке',c);
-          }
-        }else if(enemyChanges[r][c]===null){
-          // Противник явно указал что клетка пуста
-          grid[ourRow][c].unit=null;
-          grid[ourRow][c].hp=0;
-          grid[ourRow][c].cardData=null;
-        }
-      }
-    }
+    const ef=snap.val();if(!ef)return;
+    for(let r=0;r<3;r++){if(!ef[r])continue;for(let c=0;c<COLS;c++){
+      if(ef[r][c]&&ef[r][c].u){grid[r+3][c].hp=ef[r][c].h;grid[r+3][c].maxHp=ef[r][c].mh;if(ef[r][c].h<=0){grid[r+3][c].unit=null;grid[r+3][c].hp=0;grid[r+3][c].cardData=null;}}
+      else if(ef[r][c]===null){grid[r+3][c].unit=null;grid[r+3][c].hp=0;grid[r+3][c].cardData=null;}
+    }}
   });
-  
-  // Слушаем поле противника (его ряды 3-5 -> наши вражеские 0-2)
-  onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
-    const oppField=snap.val();
-    if(!oppField)return;
-    console.log('📥 Поле противника (его ряды 3-5):', oppField.map(r=>r.map(c=>c?c.u+':'+c.h+'/'+c.mh:'пусто')));
-    for(let r=0;r<3;r++){
-      if(!oppField[r])continue;
-      for(let c=0;c<COLS;c++){
-        let tr=2-r,tc=3-c;
-        if(oppField[r][c]&&oppField[r][c].u){
-          grid[tr][tc].unit=oppField[r][c].u;
-          grid[tr][tc].hp=oppField[r][c].h;
-          grid[tr][tc].maxHp=oppField[r][c].mh;
-          grid[tr][tc].damage=oppField[r][c].d||0;
-          grid[tr][tc].attackRange=oppField[r][c].ar||1;
-          grid[tr][tc].hasMovedThisRound=oppField[r][c].hm||false;
-          grid[tr][tc].cardData={name:oppField[r][c].u,emoji:oppField[r][c].u};
-        }else if(!oppField[r][c]){
-          grid[tr][tc].unit=null;
-          grid[tr][tc].hp=0;
-          grid[tr][tc].cardData=null;
-        }
-      }
-    }
-  });
-}
   // Слушаем поле противника (его ряды 3-5 -> наши вражеские 0-2)
   onValue(ref(db,'pvp_fields/'+pvpRoom+'/'+pvpOpponentId),(snap)=>{
     const oppField=snap.val();if(!oppField)return;
