@@ -162,13 +162,14 @@ function syncAttack(row,col){
 }
 
 // ====== ПОЛУЧЕНИЕ АТАКИ ПРОТИВНИКА (ЗЕРКАЛИРОВАНИЕ КАК У ЮНИТОВ) ======
+// ====== ПОЛУЧЕНИЕ АТАКИ ПРОТИВНИКА (ЗЕРКАЛИРОВАНИЕ + АТАКА ВНИЗ) ======
 function watchOpponentAttack(){
   if(!pvpRoom)return;
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();if(!a||Date.now()-a.time>2000)return;
     console.log('⚔️ Атака противника! Оригинал: ряд='+a.attackerRow+' кол='+a.attackerCol+' урон='+a.damage+' дальность='+a.attackRange);
     
-    // Зеркалирование как у юнитов (такое же как в watchOpponentField)
+    // Зеркалирование как у юнитов
     let showRow = 2 - a.attackerRow;
     let showCol = 3 - a.attackerCol;
     
@@ -201,8 +202,8 @@ function watchOpponentAttack(){
     grid[showRow][showCol].attackRange = a.attackRange;
     grid[showRow][showCol].heal = 0;
     
-    // Вызываем calculateHighlights для показа зоны атаки
-    highlightedCells = calculateHighlights(showRow, showCol);
+    // ВАЖНО: используем свою функцию для атаки ВНИЗ (dir = 1 вместо -1)
+    highlightedCells = calculateHighlightsDown(showRow, showCol);
     
     console.log('🎯 Подсвечено клеток:', highlightedCells.length);
     
@@ -227,6 +228,48 @@ function watchOpponentAttack(){
     
     setTimeout(()=>{highlightedCells=[];},1500);
   });
+}
+
+// ====== НОВАЯ ФУНКЦИЯ: подсветка атаки ВНИЗ (для зеркальной атаки) ======
+function calculateHighlightsDown(row, col){
+  const hl = [];
+  const cell = grid[row][col];
+  if(!cell || !cell.unit) return hl;
+  const dir = 1; // Атака ВНИЗ (а не вверх как в оригинале)
+  
+  for(let r = 1; r <= cell.attackRange; r++){
+    const tr = row + dir * r;
+    if(tr < 0 || tr >= ROWS) break;
+    for(let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++){
+      const tc = grid[tr] ? grid[tr][c] : null;
+      if(!tc) continue;
+      if(tc.unit){
+        // Враг теперь в рядах 3-5 (наше поле)
+        if(tr >= 3 && cell.damage > 0){
+          hl.push({row: tr, col: c, color: 'rgba(255,40,40,0.6)', text: '-' + cell.damage});
+        } else if(tr < 3){
+          hl.push({row: tr, col: c, color: 'rgba(255,255,0,0.5)', text: ''});
+        }
+      } else {
+        hl.push({row: tr, col: c, color: 'rgba(255,255,0,0.3)', text: ''});
+      }
+    }
+  }
+  
+  if(cell.heal > 0){
+    for(let r = 1; r <= cell.attackRange; r++){
+      const tr = row + dir * r;
+      if(tr < 0 || tr >= ROWS) break;
+      for(let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++){
+        const tc = grid[tr] ? grid[tr][c] : null;
+        if(tc && tc.unit && tr < 3){
+          hl.push({row: tr, col: c, color: 'rgba(50,100,255,0.6)', text: '+' + cell.heal});
+        }
+      }
+    }
+  }
+  
+  return hl;
 }
 
 function startPvP(){document.getElementById('pvp-waiting').classList.add('active');let resolved=false;console.log('🔍 Поиск PvP. Мой ID:',playerId);const unsubSignal=onValue(ref(db,'pvp_signals/'+playerId),(snap)=>{if(resolved||pvpRoom)return;const sig=snap.val();if(sig&&sig.roomId){resolved=true;pvpRoom=sig.roomId;pvpOpponentId=sig.hostId;pvpIsHost=false;console.log('🎮 ГОСТЬ! Комната:',pvpRoom,'Хост:',pvpOpponentId);remove(ref(db,'pvp_signals/'+playerId));remove(ref(db,'pvp_queue/'+playerId));unsubSignal();initGrid(true);document.getElementById('pvp-waiting').classList.remove('active');startGame();setTimeout(()=>{watchOpponentField();watchGameState();watchOpponentAttack();},500);}});set(ref(db,'pvp_queue/'+playerId),{playerId:playerId,time:Date.now()});console.log('✅ В очереди');setTimeout(()=>{if(resolved||pvpRoom)return;const unsubQueue=onValue(ref(db,'pvp_queue'),(snap)=>{if(resolved||pvpRoom)return;const data=snap.val();if(!data)return;const others=Object.entries(data).filter(([key])=>key!==playerId);console.log('📋 Другие в очереди:',others.length);if(others.length>0){resolved=true;const[oppKey]=others[0];pvpRoom='room_'+Date.now();pvpOpponentId=oppKey;pvpIsHost=true;console.log('🎮 ХОСТ! Комната:',pvpRoom,'Гость:',pvpOpponentId);remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_queue/'+oppKey));unsubQueue();initGrid(true);set(ref(db,'pvp_signals/'+oppKey),{roomId:pvpRoom,hostId:playerId});console.log('📤 Сигнал гостю');document.getElementById('pvp-waiting').classList.remove('active');startGame();setTimeout(()=>{watchOpponentField();watchGameState();watchOpponentAttack();},500);}});},2000);setTimeout(()=>{if(!resolved&&document.getElementById('pvp-waiting').classList.contains('active')){console.log('⏰ Таймаут');remove(ref(db,'pvp_queue/'+playerId));remove(ref(db,'pvp_signals/'+playerId));document.getElementById('pvp-waiting').classList.remove('active');alert('Соперник не найден');}},30000);}
