@@ -104,6 +104,8 @@ let cellSize=30,gridOffsetX=0,gridOffsetY=0,gameLoopId=null,timerInterval=null,e
 let selectedUnitRow=-1,selectedUnitCol=-1,highlightedCells=[],placementHighlights=[];
 let currentMode='classic',playerId='p_'+Math.random().toString(36).substr(2,9);
 let pvpRoom=null,pvpIsHost=false,pvpOpponentId=null,attackAnimationTimeout=null;
+let enemyActionHighlights=[]; // Подсветка действий врага
+let enemyActionTimeout=null; // Таймер для очистки подсветки врага
 
 function renderAllCardsPage(){const g=document.getElementById('all-cards-grid');if(!g)return;g.innerHTML='';ALL_CARDS.forEach(c=>{const d=document.createElement('div');d.className='card-info';d.innerHTML='<div class="card-info-top-bar" style="background:'+(RARITY_COLORS[c.rarity]||RARITY_COLORS.common)+'"><div class="card-info-stats-left"><span class="card-info-stat hp">❤️ '+c.hp+'</span><span class="card-info-stat dmg">⚔️ '+c.damage+'</span></div><div class="card-info-name-area"><span class="card-info-name">'+c.name+'</span></div><span class="card-info-cost">💜'+c.cost+'</span></div><div class="card-info-image">'+c.emoji+'</div>';g.appendChild(d)})}
 function initGrid(isPvP){grid.length=0;for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++){grid[r][c]={color:r<3?'#ff4444':'#4488ff',unit:null,hp:0,maxHp:0,damage:0,attackRange:0,heal:0,hasMovedThisRound:false,cardData:null}}}if(!isPvP){for(let r=0;r<3;r++)for(let c=0;c<COLS;c++){grid[r][c].unit='👾';grid[r][c].hp=8;grid[r][c].maxHp=8;grid[r][c].damage=2;grid[r][c].attackRange=1;grid[r][c].heal=0;grid[r][c].cardData={name:'Миньон',emoji:'👾',hp:8,maxHp:8,damage:2,attackRange:1}}}}
@@ -113,11 +115,11 @@ function buyCard(i){if(gamePhase!=='placement'||!availableCards[i])return;const 
 function updateElixirDisplay(){const e=document.getElementById('elixir-display');if(e)e.textContent='💜 '+elixir}
 function updatePhaseDisplay(){const e=document.getElementById('game-phase');if(!e)return;if(gamePhase==='placement')e.textContent='РАССТАНОВКА';else if(gamePhase==='playerTurn')e.textContent=isPlayerTurn?'ВАШ ХОД':'ХОД ПРОТИВНИКА';else e.textContent=gamePhase}
 
-// ====== РАСЧЁТ ПОДСВЕТКИ (ПРАВИЛЬНАЯ ВЕРСИЯ) ======
+// ====== РАСЧЁТ ПОДСВЕТКИ ДЛЯ ИГРОКА (АТАКА ВВЕРХ) ======
 function calculateHighlights(row,col){
   const hl=[],cell=grid[row][col];
   if(!cell||!cell.unit)return hl;
-  const dir=-1; // Атака вверх для рядов 3-5
+  const dir=-1;
   for(let r=1;r<=cell.attackRange;r++){
     const tr=row+dir*r;
     if(tr<0||tr>=ROWS)break;
@@ -141,7 +143,7 @@ function calculateHighlights(row,col){
   return hl;
 }
 
-// ====== ПОДСВЕТКА ДЛЯ ВРАГОВ (АТАКА ВНИЗ) ======
+// ====== РАСЧЁТ ПОДСВЕТКИ ДЛЯ ВРАГА (АТАКА ВНИЗ) ======
 function calculateHighlightsDown(row,col){
   const hl=[],cell=grid[row][col];
   if(!cell||!cell.unit)return hl;
@@ -153,120 +155,43 @@ function calculateHighlightsDown(row,col){
       const tc=grid[tr]?grid[tr][c]:null;
       if(!tc)continue;
       if(tc.unit){
-        if(tr>=3&&cell.damage>0)hl.push({row:tr,col:c,color:'rgba(255,40,40,0.6)',text:'-'+cell.damage});
+        if(tr>=3&&cell.damage>0)hl.push({row:tr,col:c,color:'rgba(255,40,40,0.8)',text:'-'+cell.damage});
         else if(tr<3)hl.push({row:tr,col:c,color:'rgba(255,255,0,0.5)',text:''});
       }else hl.push({row:tr,col:c,color:'rgba(255,255,0,0.3)',text:''});
+    }
+  }
+  if(cell.heal>0)for(let r=1;r<=cell.attackRange;r++){
+    const tr=row+dir*r;
+    if(tr<0||tr>=ROWS)break;
+    for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){
+      const tc=grid[tr]?grid[tr][c]:null;
+      if(tc&&tc.unit&&tr<3)hl.push({row:tr,col:c,color:'rgba(50,255,100,0.6)',text:'+'+cell.heal});
     }
   }
   return hl;
 }
 
-// ====== НОВАЯ АТАКА С ПОЛНОЦЕННЫМ ПОИСКОМ ЦЕЛИ ======
+// ====== ПОЛУЧИТЬ ВСЕХ ЮНИТОВ КОТОРЫЕ МОГУТ ХОДИТЬ ======
+function getAvailableUnits(playerSide){
+  const units=[];
+  if(playerSide){
+    // Наши юниты (ряды 3-5)
+    for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)if(grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)units.push({row:r,col:c});
+  }else{
+    // Вражеские юниты (ряды 0-2)
+    for(let r=0;r<3;r++)for(let c=0;c<COLS;c++)if(grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)units.push({row:r,col:c});
+  }
+  return units;
+}
+
+// ====== АТАКА ИГРОКА ======
 function unitAttack(row,col){
   const cell=grid[row][col];
   if(!cell||!cell.unit)return;
   
-  console.log(`⚔️ Атака юнита [${row},${col}] с уроном ${cell.damage}, радиус ${cell.attackRange}`);
+  console.log(`⚔️ Игрок атакует из [${row},${col}] с уроном ${cell.damage}, радиус ${cell.attackRange}`);
   
-  // Направление атаки: если свой юнит (ряды 3-5), атакуем вверх, иначе вниз
-  const dir = row >= 3 ? -1 : 1;
-  let targetFound = false;
-  
-  // Поиск цели по всем клеткам в радиусе атаки
-  for(let r = 1; r <= cell.attackRange; r++){
-    const tr = row + dir * r;
-    if(tr < 0 || tr >= ROWS) break;
-    
-    // Проверяем 3 клетки по горизонтали (col-1, col, col+1)
-    for(let c = Math.max(0, col-1); c <= Math.min(COLS-1, col+1); c++){
-      const tc = grid[tr]?.[c];
-      if(!tc || !tc.unit) continue;
-      
-      // Проверяем, что это враг
-      const isEnemy = (row >= 3 && tr < 3) || (row < 3 && tr >= 3);
-      if(!isEnemy) continue;
-      
-      // Наносим урон
-      const actualDamage = cell.damage;
-      tc.hp -= actualDamage;
-      targetFound = true;
-      
-      console.log(`💥 Урон ${actualDamage} по врагу [${tr},${c}]! HP: ${tc.hp}/${tc.maxHp}`);
-      
-      // Добавляем анимацию попадания
-      highlightedCells.push({
-        row: tr, 
-        col: c, 
-        color: 'rgba(255, 40, 40, 0.8)', 
-        text: '-' + actualDamage
-      });
-      
-      // Проверяем смерть
-      if(tc.hp <= 0){
-        console.log(`💀 Враг [${tr},${c}] уничтожен!`);
-        tc.unit = null;
-        tc.hp = 0;
-        tc.maxHp = 0;
-        tc.damage = 0;
-        tc.attackRange = 0;
-        tc.heal = 0;
-        tc.cardData = null;
-      }
-      
-      // Нашли цель - выходим из циклов
-      break;
-    }
-    if(targetFound) break;
-  }
-  
-  // Лечение союзников (для целителей)
-  if(cell.heal > 0 && row >= 3){
-    for(let r = 1; r <= cell.attackRange; r++){
-      const tr = row + dir * r;
-      if(tr < 0 || tr >= ROWS) break;
-      
-      for(let c = Math.max(0, col-1); c <= Math.min(COLS-1, col+1); c++){
-        const tc = grid[tr]?.[c];
-        if(tc && tc.unit && tr >= 3){ // Лечим только своих (ряды 3-5)
-          const healAmount = cell.heal;
-          const oldHp = tc.hp;
-          tc.hp = Math.min(tc.maxHp, tc.hp + healAmount);
-          const actualHeal = tc.hp - oldHp;
-          
-          if(actualHeal > 0){
-            console.log(`💚 Лечение [${tr},${c}] +${actualHeal} HP (${tc.hp}/${tc.maxHp})`);
-            highlightedCells.push({
-              row: tr, 
-              col: c, 
-              color: 'rgba(50, 255, 100, 0.6)', 
-              text: '+' + actualHeal
-            });
-          }
-          break;
-        }
-      }
-    }
-  }
-  
-  if(!targetFound && cell.damage > 0){
-    console.log('❌ Целей в радиусе атаки не найдено');
-  }
-  
-  // Синхронизация в PvP
-  if(currentMode === 'pvp'){
-    saveMyField();
-    syncAttack(row, col);
-  }
-}
-
-// ====== ВРАЖЕСКАЯ АТАКА (ДЛЯ AI) ======
-function enemyAttack(row,col){
-  const cell=grid[row][col];
-  if(!cell||!cell.unit||cell.damage<=0)return;
-  
-  console.log(`👾 Враг атакует из [${row},${col}]`);
-  
-  const dir=1; // Атака вниз
+  const dir=-1;
   let targetFound=false;
   
   for(let r=1;r<=cell.attackRange;r++){
@@ -275,16 +200,90 @@ function enemyAttack(row,col){
     for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){
       const tc=grid[tr]?.[c];
       if(!tc||!tc.unit)continue;
+      if(tr>=3)continue; // Не атакуем своих
+      
+      const actualDamage=cell.damage;
+      tc.hp-=actualDamage;
+      targetFound=true;
+      
+      console.log(`💥 Урон ${actualDamage} по врагу [${tr},${c}]! HP: ${tc.hp}/${tc.maxHp}`);
+      
+      if(tc.hp<=0){
+        console.log(`💀 Враг [${tr},${c}] уничтожен!`);
+        tc.unit=null;tc.hp=0;tc.maxHp=0;tc.damage=0;tc.attackRange=0;tc.heal=0;tc.cardData=null;
+      }
+      break;
+    }
+    if(targetFound)break;
+  }
+  
+  // Лечение союзников
+  if(cell.heal>0){
+    for(let r=1;r<=cell.attackRange;r++){
+      const tr=row+dir*r;
+      if(tr<0||tr>=ROWS)break;
+      for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){
+        const tc=grid[tr]?.[c];
+        if(tc&&tc.unit&&tr>=3){
+          const healAmount=cell.heal;
+          const oldHp=tc.hp;
+          tc.hp=Math.min(tc.maxHp,tc.hp+healAmount);
+          const actualHeal=tc.hp-oldHp;
+          if(actualHeal>0)console.log(`💚 Лечение [${tr},${c}] +${actualHeal} HP (${tc.hp}/${tc.maxHp})`);
+          break;
+        }
+      }
+    }
+  }
+  
+  if(!targetFound&&cell.damage>0)console.log('❌ Целей в радиусе атаки не найдено');
+  if(currentMode==='pvp'){saveMyField();syncAttack(row,col);}
+}
+
+// ====== АТАКА ВРАГА С АНИМАЦИЕЙ ======
+function enemyAttack(row,col){
+  const cell=grid[row][col];
+  if(!cell||!cell.unit||cell.damage<=0)return;
+  
+  console.log(`👾 Враг атакует из [${row},${col}]`);
+  
+  // Сохраняем информацию об атаке для отображения
+  const attackInfo=calculateHighlightsDown(row,col);
+  
+  // Добавляем красную обводку на атакующего
+  enemyActionHighlights=[{
+    row:row,col:col,
+    color:'rgba(255,0,0,0.8)',
+    text:'АТАКА',
+    isAttacker:true
+  }];
+  
+  // Добавляем подсветку зоны атаки
+  attackInfo.forEach(h=>{
+    enemyActionHighlights.push(h);
+  });
+  
+  // Показываем анимацию 2 секунды
+  if(enemyActionTimeout)clearTimeout(enemyActionTimeout);
+  enemyActionTimeout=setTimeout(()=>{
+    enemyActionHighlights=[];
+  },2000);
+  
+  // Наносим урон
+  const dir=1;
+  let targetFound=false;
+  
+  for(let r=1;r<=cell.attackRange;r++){
+    const tr=row+dir*r;
+    if(tr<0||tr>=ROWS)break;
+    for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){
+      const tc=grid[tr]?.[c];
+      if(!tc||!tc.unit)continue;
+      if(tr<3)continue;
       
       tc.hp-=cell.damage;
       targetFound=true;
       console.log(`💥 Враг нанёс ${cell.damage} урона по [${tr},${c}]! HP: ${tc.hp}/${tc.maxHp}`);
-      
-      highlightedCells.push({
-        row:tr,col:c,
-        color:'rgba(255,40,40,0.8)',
-        text:'-'+cell.damage
-      });
       
       if(tc.hp<=0){
         console.log(`💀 Наш юнит [${tr},${c}] уничтожен!`);
@@ -294,6 +293,32 @@ function enemyAttack(row,col){
     }
     if(targetFound)break;
   }
+  
+  // Лечение вражеских союзников
+  if(cell.heal>0){
+    for(let r=1;r<=cell.attackRange;r++){
+      const tr=row+dir*r;
+      if(tr<0||tr>=ROWS)break;
+      for(let c=Math.max(0,col-1);c<=Math.min(COLS-1,col+1);c++){
+        const tc=grid[tr]?.[c];
+        if(tc&&tc.unit&&tr<3){
+          const healAmount=cell.heal;
+          const oldHp=tc.hp;
+          tc.hp=Math.min(tc.maxHp,tc.hp+healAmount);
+          const actualHeal=tc.hp-oldHp;
+          if(actualHeal>0){
+            console.log(`💚 Враг лечит [${tr},${c}] +${actualHeal} HP`);
+            enemyActionHighlights.push({
+              row:tr,col:c,
+              color:'rgba(50,255,100,0.6)',
+              text:'+'+actualHeal
+            });
+          }
+          break;
+        }
+      }
+    }
+  }
 }
 
 function checkMoves(){let pm=0,em=0;for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)pm++;for(let r=0;r<3;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)em++;return{playerMoves:pm,enemyMoves:em}}
@@ -301,6 +326,7 @@ function checkMoves(){let pm=0,em=0;for(let r=3;r<6;r++)for(let c=0;c<COLS;c++)i
 function startPlacementPhase(){
   gamePhase='placement';isPlayerTurn=false;elixir=Math.min(MAX_ELIXIR,elixir+5);
   selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
+  enemyActionHighlights=[];
   updateElixirDisplay();updatePhaseDisplay();
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r]&&grid[r][c])grid[r][c].hasMovedThisRound=false;
   availableCards=shuffleArray(ALL_CARDS).slice(0,5);purchasedCards=[];selectedPurchasedCard=null;renderCards();
@@ -310,28 +336,233 @@ function startPlacementPhase(){
   if(currentMode==='pvp'){saveMyField();syncStateToFB();}
 }
 
-function startBattlePhase(){if(timerInterval){clearInterval(timerInterval);timerInterval=null}gamePhase='playerTurn';const{playerMoves,enemyMoves}=checkMoves();if(currentMode==='pvp'){if(pvpIsHost){isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);}else{isPlayerTurn=false;}}else{isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);}selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];updatePhaseDisplay();document.getElementById('game-timer').textContent='';if(currentMode==='pvp')syncStateToFB();}
+function startBattlePhase(){
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null}
+  gamePhase='playerTurn';
+  const{playerMoves,enemyMoves}=checkMoves();
+  enemyActionHighlights=[];
+  
+  if(currentMode==='pvp'){
+    if(pvpIsHost){
+      isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);
+    }else{
+      isPlayerTurn=false;
+    }
+  }else{
+    isPlayerTurn=playerMoves>0&&(Math.random()<0.5||enemyMoves===0);
+  }
+  
+  selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
+  updatePhaseDisplay();
+  document.getElementById('game-timer').textContent='';
+  if(currentMode==='pvp')syncStateToFB();
+}
 
-function processTurn(){const{playerMoves,enemyMoves}=checkMoves();console.log(`🔄 Ходов: игрок=${playerMoves}, враг=${enemyMoves}`);if(playerMoves===0||enemyMoves===0){console.log('🔄 Новая фаза расстановки');startPlacementPhase();return;}if(!isPlayerTurn){console.log('👾 Ход врага');executeEnemyTurn();}isPlayerTurn=!isPlayerTurn;updatePhaseDisplay();if(currentMode==='pvp')syncStateToFB();}
+function processTurn(){
+  const{playerMoves,enemyMoves}=checkMoves();
+  console.log(`🔄 Ходов: игрок=${playerMoves}, враг=${enemyMoves}`);
+  
+  if(playerMoves===0||enemyMoves===0){
+    console.log('🔄 Новая фаза расстановки');
+    startPlacementPhase();
+    return;
+  }
+  
+  if(!isPlayerTurn){
+    console.log('👾 Ход врага');
+    executeEnemyTurn();
+  }
+  
+  isPlayerTurn=!isPlayerTurn;
+  updatePhaseDisplay();
+  if(currentMode==='pvp')syncStateToFB();
+}
 
 function executeEnemyTurn(){
-  const enemyUnits=[];
-  for(let r=0;r<3;r++)for(let c=0;c<COLS;c++)if(grid[r][c]&&grid[r][c].unit&&!grid[r][c].hasMovedThisRound)enemyUnits.push({row:r,col:c});
+  const enemyUnits=getAvailableUnits(false);
   if(enemyUnits.length>0){
     const unit=enemyUnits[Math.floor(Math.random()*enemyUnits.length)];
     grid[unit.row][unit.col].hasMovedThisRound=true;
     enemyAttack(unit.row,unit.col);
-    setTimeout(()=>{highlightedCells=[];},1500);
+    setTimeout(()=>{
+      // После анимации очищаем, если нужно
+    },2200);
   }
 }
 
-function drawGrid(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#0d1117';ctx.fillRect(0,0,canvas.width,canvas.height);const cr=cellSize*0.1,gapBetween=10;for(let r=0;r<ROWS;r++){for(let c=0;c<COLS;c++){if(!grid[r]||!grid[r][c])continue;const x=gridOffsetX+c*(cellSize+gapBetween),y=gridOffsetY+r*(cellSize+gapBetween),cell=grid[r][c];ctx.fillStyle=cell.color;ctx.beginPath();ctx.roundRect(x,y,cellSize,cellSize,cr);ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.stroke();if(r===selectedUnitRow&&c===selectedUnitCol){ctx.fillStyle='rgba(255,215,0,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill();ctx.strokeStyle='#ffd700';ctx.lineWidth=3;ctx.stroke()}if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'&&isPlayerTurn&&r>=3){ctx.fillStyle='rgba(255,255,100,0.3)';ctx.beginPath();ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);ctx.fill()}if(cell.unit){ctx.fillStyle='#fff';ctx.font=(cellSize*0.35)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cell.unit,x+cellSize/2,y+cellSize/2-cellSize*0.1);const bw=cellSize*0.75,bh=4,bx=x+(cellSize-bw)/2,by=y+cellSize-7;ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);const pct=cell.hp/cell.maxHp;ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';ctx.fillRect(bx,by,bw*pct,bh);ctx.fillStyle='#fff';ctx.font='bold '+Math.max(6,cellSize*0.16)+'px Arial';ctx.textAlign='center';ctx.fillText(Math.ceil(cell.hp)+'/'+cell.maxHp,x+cellSize/2,y+cellSize-10)}}}placementHighlights.forEach(h=>{const x=gridOffsetX+h.col*(cellSize+gapBetween),y=gridOffsetY+h.row*(cellSize+gapBetween);ctx.fillStyle=h.color;ctx.beginPath();ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);ctx.fill();ctx.strokeStyle='rgba(50,255,50,0.8)';ctx.lineWidth=2;ctx.stroke()});highlightedCells.forEach(h=>{const x=gridOffsetX+h.col*(cellSize+gapBetween),y=gridOffsetY+h.row*(cellSize+gapBetween);ctx.fillStyle=h.color;ctx.beginPath();ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);ctx.fill();ctx.strokeStyle=h.color.replace('0.6','0.9').replace('0.5','0.8').replace('0.3','0.6');ctx.lineWidth=2;ctx.stroke();if(h.text){ctx.fillStyle='#fff';ctx.font='bold '+Math.max(12,cellSize*0.35)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.strokeText(h.text,x+cellSize/2,y+cellSize/2);ctx.fillText(h.text,x+cellSize/2,y+cellSize/2)}});}
+// ====== ОТРИСОВКА ======
+function drawGrid(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#0d1117';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
+  const cr=cellSize*0.1,gapBetween=10;
+  
+  // Собираем всех юнитов которые могут ходить для подсветки
+  const availablePlayerUnits=getAvailableUnits(true);
+  const availableEnemyUnits=getAvailableUnits(false);
+  
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(!grid[r]||!grid[r][c])continue;
+      
+      const x=gridOffsetX+c*(cellSize+gapBetween);
+      const y=gridOffsetY+r*(cellSize+gapBetween);
+      const cell=grid[r][c];
+      
+      // Фон клетки
+      ctx.fillStyle=cell.color;
+      ctx.beginPath();
+      ctx.roundRect(x,y,cellSize,cellSize,cr);
+      ctx.fill();
+      
+      // Обычная обводка
+      ctx.strokeStyle='rgba(255,255,255,0.4)';
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);
+      ctx.stroke();
+      
+      // Подсветка выбранного юнита (золотая)
+      if(r===selectedUnitRow&&c===selectedUnitCol){
+        ctx.fillStyle='rgba(255,215,0,0.3)';
+        ctx.beginPath();
+        ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);
+        ctx.fill();
+        ctx.strokeStyle='#ffd700';
+        ctx.lineWidth=3;
+        ctx.stroke();
+      }
+      
+      // Подсветка доступных юнитов в свой ход (жёлтая обводка)
+      if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'&&isPlayerTurn&&r>=3){
+        ctx.strokeStyle='rgba(255,255,0,0.7)';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);
+        ctx.stroke();
+      }
+      
+      // Подсветка доступных юнитов врага в его ход (оранжевая обводка)
+      if(cell.unit&&!cell.hasMovedThisRound&&gamePhase==='playerTurn'&&!isPlayerTurn&&r<3){
+        ctx.strokeStyle='rgba(255,165,0,0.7)';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);
+        ctx.stroke();
+      }
+      
+      // Отрисовка юнита
+      if(cell.unit){
+        ctx.fillStyle='#fff';
+        ctx.font=(cellSize*0.35)+'px Arial';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(cell.unit,x+cellSize/2,y+cellSize/2-cellSize*0.1);
+        
+        // HP бар
+        const bw=cellSize*0.75,bh=4;
+        const bx=x+(cellSize-bw)/2,by=y+cellSize-7;
+        ctx.fillStyle='#333';
+        ctx.fillRect(bx,by,bw,bh);
+        const pct=cell.hp/cell.maxHp;
+        ctx.fillStyle=pct>0.5?'#4caf50':pct>0.25?'#ff9800':'#f44336';
+        ctx.fillRect(bx,by,bw*pct,bh);
+        ctx.fillStyle='#fff';
+        ctx.font='bold '+Math.max(6,cellSize*0.16)+'px Arial';
+        ctx.textAlign='center';
+        ctx.fillText(Math.ceil(cell.hp)+'/'+cell.maxHp,x+cellSize/2,y+cellSize-10);
+      }
+    }
+  }
+  
+  // Подсветка для расстановки (зелёные клетки)
+  placementHighlights.forEach(h=>{
+    const x=gridOffsetX+h.col*(cellSize+gapBetween);
+    const y=gridOffsetY+h.row*(cellSize+gapBetween);
+    ctx.fillStyle=h.color;
+    ctx.beginPath();
+    ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);
+    ctx.fill();
+    ctx.strokeStyle='rgba(50,255,50,0.8)';
+    ctx.lineWidth=2;
+    ctx.stroke();
+  });
+  
+  // Подсветка атаки игрока
+  highlightedCells.forEach(h=>{
+    const x=gridOffsetX+h.col*(cellSize+gapBetween);
+    const y=gridOffsetY+h.row*(cellSize+gapBetween);
+    ctx.fillStyle=h.color;
+    ctx.beginPath();
+    ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);
+    ctx.fill();
+    ctx.strokeStyle=h.color.replace('0.6','0.9').replace('0.5','0.8').replace('0.3','0.6');
+    ctx.lineWidth=2;
+    ctx.stroke();
+    if(h.text){
+      ctx.fillStyle='#fff';
+      ctx.font='bold '+Math.max(12,cellSize*0.35)+'px Arial';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.strokeStyle='#000';
+      ctx.lineWidth=2;
+      ctx.strokeText(h.text,x+cellSize/2,y+cellSize/2);
+      ctx.fillText(h.text,x+cellSize/2,y+cellSize/2);
+    }
+  });
+  
+  // Подсветка действий врага
+  enemyActionHighlights.forEach(h=>{
+    const x=gridOffsetX+h.col*(cellSize+gapBetween);
+    const y=gridOffsetY+h.row*(cellSize+gapBetween);
+    
+    if(h.isAttacker){
+      // Красная обводка атакующего
+      ctx.strokeStyle='rgba(255,0,0,0.9)';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.roundRect(x+1,y+1,cellSize-2,cellSize-2,cr);
+      ctx.stroke();
+      
+      // Текст "АТАКА"
+      ctx.fillStyle='#ff0000';
+      ctx.font='bold '+Math.max(10,cellSize*0.25)+'px Arial';
+      ctx.textAlign='center';
+      ctx.textBaseline='bottom';
+      ctx.fillText(h.text,x+cellSize/2,y-2);
+    }else{
+      // Подсветка зоны атаки/лечения
+      ctx.fillStyle=h.color;
+      ctx.beginPath();
+      ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,cr);
+      ctx.fill();
+      
+      const strokeColor=h.color.includes('255,40,40')?'rgba(255,0,0,0.9)':
+                       h.color.includes('50,255,100')?'rgba(50,255,100,0.9)':
+                       'rgba(255,255,0,0.6)';
+      ctx.strokeStyle=strokeColor;
+      ctx.lineWidth=2;
+      ctx.stroke();
+      
+      if(h.text){
+        ctx.fillStyle='#fff';
+        ctx.font='bold '+Math.max(12,cellSize*0.35)+'px Arial';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.strokeStyle='#000';
+        ctx.lineWidth=2;
+        ctx.strokeText(h.text,x+cellSize/2,y+cellSize/2);
+        ctx.fillText(h.text,x+cellSize/2,y+cellSize/2);
+      }
+    }
+  });
+}
 
 // ====== PVP СИНХРОНИЗАЦИЯ ======
 function saveMyField(){
   if(!pvpRoom)return;
   
-  // Сохраняем свои юниты (ряды 3-5)
   const myUnits=[];
   for(let r=3;r<6;r++){
     myUnits[r-3]=[];
@@ -345,15 +576,12 @@ function saveMyField(){
     }
   }
   
-  // Сохраняем HP врагов (ряды 0-2) после моих атак
   const enemyHp=[];
   for(let r=0;r<3;r++){
     enemyHp[r]=[];
     for(let c=0;c<COLS;c++){
       const cell=grid[r][c];
-      enemyHp[r][c]=cell.unit?{
-        h:cell.hp,alive:cell.hp>0
-      }:null;
+      enemyHp[r][c]=cell.unit?{h:cell.hp,alive:cell.hp>0}:null;
     }
   }
   
@@ -367,12 +595,11 @@ function watchOpponentField(){
     const data=snap.val();
     if(!data)return;
     
-    // Обновляем врагов (ряды 0-2) из myUnits противника
     if(data.myUnits){
       for(let r=0;r<3;r++){
         if(!data.myUnits[r])continue;
         for(let c=0;c<COLS;c++){
-          const myRow=2-r,myCol=3-c; // Зеркальное отображение
+          const myRow=2-r,myCol=3-c;
           const unitData=data.myUnits[r][c];
           
           if(unitData&&unitData.u){
@@ -384,6 +611,7 @@ function watchOpponentField(){
             grid[myRow][myCol].damage=unitData.d;
             grid[myRow][myCol].attackRange=unitData.ar;
             grid[myRow][myCol].heal=unitData.heal||0;
+            grid[myRow][myCol].hasMovedThisRound=unitData.hm||false;
           }else if(!unitData||!unitData.u){
             if(grid[myRow]&&grid[myRow][myCol]){
               grid[myRow][myCol].unit=null;grid[myRow][myCol].hp=0;grid[myRow][myCol].cardData=null;
@@ -393,7 +621,6 @@ function watchOpponentField(){
       }
     }
     
-    // Обновляем HP своих юнитов из enemyHp противника
     if(data.enemyHp){
       for(let r=0;r<3;r++){
         if(!data.enemyHp[r])continue;
@@ -414,7 +641,7 @@ function watchOpponentField(){
 }
 
 function syncStateToFB(){if(!pvpRoom)return;set(ref(db,'rooms/'+pvpRoom+'/state'),{phase:gamePhase,isPlayerTurn,currentPlayer:isPlayerTurn?playerId:pvpOpponentId});}
-function syncAttack(row,col){if(!pvpRoom)return;set(ref(db,'rooms/'+pvpRoom+'/attack'),{from:playerId,time:Date.now()});}
+function syncAttack(row,col){if(!pvpRoom)return;set(ref(db,'rooms/'+pvpRoom+'/attack'),{from:playerId,row:row,col:col,time:Date.now()});}
 
 function watchGameState(){
   if(!pvpRoom)return;
@@ -435,8 +662,27 @@ function watchOpponentAttack(){
   onValue(ref(db,'rooms/'+pvpRoom+'/attack'),(snap)=>{
     const a=snap.val();
     if(!a||a.from===playerId||Date.now()-a.time>3000)return;
-    // Противник атаковал - обновляем поле
-    saveMyField();
+    
+    // Показываем анимацию атаки противника
+    const oppRow=a.row,oppCol=a.col;
+    // Зеркалим координаты
+    const showRow=2-oppRow,showCol=3-oppCol;
+    
+    if(grid[showRow]&&grid[showRow][showCol]&&grid[showRow][showCol].unit){
+      const attackHighlights=calculateHighlightsDown(showRow,showCol);
+      
+      enemyActionHighlights=[{
+        row:showRow,col:showCol,
+        color:'rgba(255,0,0,0.8)',
+        text:'АТАКА',
+        isAttacker:true
+      },...attackHighlights];
+      
+      if(enemyActionTimeout)clearTimeout(enemyActionTimeout);
+      enemyActionTimeout=setTimeout(()=>{
+        enemyActionHighlights=[];
+      },2000);
+    }
   });
 }
 
@@ -502,7 +748,8 @@ function startPvP(){
 function startGame(){
   lobby.style.display='none';lobby.classList.remove('active');
   gameScreen.classList.add('active');
-  elixir=10;selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];placementHighlights=[];
+  elixir=10;selectedUnitRow=-1;selectedUnitCol=-1;
+  highlightedCells=[];placementHighlights=[];enemyActionHighlights=[];
   startPlacementPhase();
   setTimeout(resizeCanvas,300);
   if(gameLoopId)cancelAnimationFrame(gameLoopId);
@@ -530,6 +777,7 @@ document.getElementById('back-button').onclick=()=>{
   if(timerInterval)clearInterval(timerInterval);
   if(gameLoopId)cancelAnimationFrame(gameLoopId);
   if(attackAnimationTimeout)clearTimeout(attackAnimationTimeout);
+  if(enemyActionTimeout)clearTimeout(enemyActionTimeout);
   if(pvpRoom){
     remove(ref(db,'pvp_fields/'+pvpRoom));
     remove(ref(db,'rooms/'+pvpRoom));
@@ -592,26 +840,22 @@ canvas.onclick=e=>{
     return;
   }
   
-  // Фаза боя
+  // Фаза боя - ход игрока
   if(gamePhase==='playerTurn'&&isPlayerTurn){
     const cell=grid[row][col];
     
-    // Клик по своему юниту
     if(row>=3&&cell&&cell.unit&&!cell.hasMovedThisRound){
       if(selectedUnitRow===row&&selectedUnitCol===col){
-        // Повторный клик - АТАКА
+        // АТАКА
         cell.hasMovedThisRound=true;
         
-        // Показываем анимацию атаки
         const attackTargets=calculateHighlights(row,col);
         highlightedCells=attackTargets;
         
-        // Задержка для визуального эффекта
         if(attackAnimationTimeout)clearTimeout(attackAnimationTimeout);
         attackAnimationTimeout=setTimeout(()=>{
           unitAttack(row,col);
           
-          // Ещё небольшая задержка чтобы увидеть результат
           setTimeout(()=>{
             selectedUnitRow=-1;selectedUnitCol=-1;
             highlightedCells=[];
@@ -626,7 +870,6 @@ canvas.onclick=e=>{
         highlightedCells=calculateHighlights(row,col);
       }
     }else{
-      // Клик мимо - сброс выбора
       selectedUnitRow=-1;selectedUnitCol=-1;highlightedCells=[];
     }
   }
