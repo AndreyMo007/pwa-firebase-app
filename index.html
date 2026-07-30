@@ -172,7 +172,7 @@ function renderAllCardsPage() {
 }
 
 function initGrid(isPvP) {
-  grid.length = 0;
+  grid = [];
   for (let r = 0; r < ROWS; r++) {
     grid[r] = [];
     for (let c = 0; c < COLS; c++) {
@@ -295,7 +295,7 @@ function calculateHighlights(row, col) {
   const cell = grid[row]?.[col];
   if (!cell || !cell.unit) return hl;
   
-  const dir = -1; // Атака вверх для своих
+  const dir = -1;
   for (let r = 1; r <= cell.attackRange; r++) {
     const tr = row + dir * r;
     if (tr < 0 || tr >= ROWS) break;
@@ -335,7 +335,7 @@ function calculateHighlightsDown(row, col) {
   const cell = grid[row]?.[col];
   if (!cell || !cell.unit) return hl;
   
-  const dir = 1; // Атака вниз для врагов
+  const dir = 1;
   for (let r = 1; r <= cell.attackRange; r++) {
     const tr = row + dir * r;
     if (tr < 0 || tr >= ROWS) break;
@@ -357,17 +357,17 @@ function calculateHighlightsDown(row, col) {
   return hl;
 }
 
-// ====== АТАКА ======
+// ====== ИСПРАВЛЕННАЯ АТАКА - ВСЕГДА НАНОСИТ УРОН ======
 function unitAttack(row, col) {
   const cell = grid[row]?.[col];
-  if (!cell || !cell.unit) return;
+  if (!cell || !cell.unit || cell.damage <= 0) return;
   
-  console.log(`⚔️ АТАКА: юнит [${row},${col}] урон=${cell.damage} радиус=${cell.attackRange}`);
+  console.log(`⚔️ АТАКА: [${row},${col}] урон=${cell.damage} радиус=${cell.attackRange}`);
   
   const dir = row >= 3 ? -1 : 1;
   let targetsHit = 0;
   
-  // Атакуем все цели в области
+  // Атакуем ВСЕ цели в области
   for (let r = 1; r <= cell.attackRange; r++) {
     const tr = row + dir * r;
     if (tr < 0 || tr >= ROWS) break;
@@ -376,13 +376,12 @@ function unitAttack(row, col) {
       const tc = grid[tr]?.[c];
       if (!tc || !tc.unit) continue;
       
-      // Проверяем враг ли это
       const isEnemy = (row >= 3 && tr < 3) || (row < 3 && tr >= 3);
       if (!isEnemy) continue;
       
-      // Наносим урон
+      // ВСЕГДА наносим урон, даже если убьёт
       const beforeHp = tc.hp;
-      tc.hp -= cell.damage;
+      tc.hp = beforeHp - cell.damage; // Прямое вычитание без проверок
       targetsHit++;
       
       console.log(`💥 Урон ${cell.damage} по [${tr},${c}]: HP ${beforeHp} -> ${tc.hp}/${tc.maxHp}`);
@@ -394,9 +393,9 @@ function unitAttack(row, col) {
         text: '-' + cell.damage
       });
       
-      // Проверяем смерть
+      // Если HP упал до 0 или ниже - удаляем юнита
       if (tc.hp <= 0) {
-        console.log(`💀 Юнит [${tr},${c}] уничтожен!`);
+        console.log(`💀 ВРАГ УНИЧТОЖЕН [${tr},${c}]! HP стал ${tc.hp}`);
         tc.unit = null;
         tc.hp = 0;
         tc.maxHp = 0;
@@ -404,11 +403,12 @@ function unitAttack(row, col) {
         tc.attackRange = 0;
         tc.heal = 0;
         tc.cardData = null;
+        tc.hasMovedThisRound = false;
       }
     }
   }
   
-  // Лечение
+  // Лечение союзников
   if (cell.heal > 0 && row >= 3) {
     for (let r = 1; r <= cell.attackRange; r++) {
       const tr = row + dir * r;
@@ -435,9 +435,7 @@ function unitAttack(row, col) {
     }
   }
   
-  if (targetsHit === 0 && cell.damage > 0) {
-    console.log('❌ Целей не найдено');
-  }
+  console.log(`✅ Атака завершена. Поражено целей: ${targetsHit}`);
   
   if (currentMode === 'pvp') {
     saveMyField();
@@ -445,11 +443,12 @@ function unitAttack(row, col) {
   }
 }
 
+// ====== ИСПРАВЛЕННАЯ ВРАЖЕСКАЯ АТАКА ======
 function enemyAttack(row, col) {
   const cell = grid[row]?.[col];
   if (!cell || !cell.unit || cell.damage <= 0) return;
   
-  console.log(`👾 ВРАГ АТАКУЕТ из [${row},${col}] урон=${cell.damage}`);
+  console.log(`👾 ВРАГ АТАКУЕТ [${row},${col}] урон=${cell.damage}`);
   
   const dir = 1;
   
@@ -461,8 +460,9 @@ function enemyAttack(row, col) {
       const tc = grid[tr]?.[c];
       if (!tc || !tc.unit) continue;
       
+      // ВСЕГДА наносим урон
       const beforeHp = tc.hp;
-      tc.hp -= cell.damage;
+      tc.hp = beforeHp - cell.damage;
       
       console.log(`💥 Враг нанёс ${cell.damage} по [${tr},${c}]: HP ${beforeHp} -> ${tc.hp}/${tc.maxHp}`);
       
@@ -474,7 +474,7 @@ function enemyAttack(row, col) {
       });
       
       if (tc.hp <= 0) {
-        console.log(`💀 Наш юнит [${tr},${c}] уничтожен!`);
+        console.log(`💀 НАШ ЮНИТ УНИЧТОЖЕН [${tr},${c}]!`);
         tc.unit = null;
         tc.hp = 0;
         tc.maxHp = 0;
@@ -482,6 +482,7 @@ function enemyAttack(row, col) {
         tc.attackRange = 0;
         tc.heal = 0;
         tc.cardData = null;
+        tc.hasMovedThisRound = false;
       }
     }
   }
@@ -516,7 +517,7 @@ function startPlacementPhase() {
   updateElixirDisplay();
   updatePhaseDisplay();
   
-  // Сбрасываем флаги
+  // Сбрасываем флаги движения
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (grid[r]?.[c]) {
@@ -654,7 +655,7 @@ function saveMyField() {
     myUnitsData.push(rowData);
   }
   
-  // Сохраняем врагов (ряды 0-2)
+  // Сохраняем врагов (ряды 0-2) с их ТЕКУЩИМ HP
   const enemyUnitsData = [];
   for (let r = 0; r < 3; r++) {
     const rowData = [];
@@ -667,11 +668,10 @@ function saveMyField() {
           mh: cell.maxHp,
           d: cell.damage,
           ar: cell.attackRange,
-          heal: cell.heal || 0,
-          alive: true
+          heal: cell.heal || 0
         });
       } else {
-        rowData.push(null);
+        rowData.push(null); // null = юнит мёртв или отсутствует
       }
     }
     enemyUnitsData.push(rowData);
@@ -685,7 +685,7 @@ function saveMyField() {
     timestamp: Date.now()
   };
   
-  console.log('💾 Сохранение в FB:', JSON.stringify(saveData));
+  console.log('💾 Сохранение в FB:', JSON.stringify(saveData).substring(0, 200));
   set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), saveData);
 }
 
@@ -698,7 +698,7 @@ function watchOpponentField() {
     const data = snap.val();
     if (!data) return;
     
-    console.log('📥 Данные от противника:', JSON.stringify(data));
+    console.log('📥 Данные от противника');
     
     // Обновляем врагов (ряды 0-2)
     if (data.myUnits) {
@@ -712,6 +712,7 @@ function watchOpponentField() {
           if (!grid[myRow] || !grid[myRow][myCol]) continue;
           
           if (unitData && unitData.u && unitData.h > 0) {
+            // Юнит жив - обновляем все параметры включая HP
             grid[myRow][myCol].unit = unitData.u;
             grid[myRow][myCol].hp = unitData.h;
             grid[myRow][myCol].maxHp = unitData.mh || unitData.h;
@@ -720,7 +721,12 @@ function watchOpponentField() {
             grid[myRow][myCol].heal = unitData.heal || 0;
             grid[myRow][myCol].hasMovedThisRound = unitData.hm || false;
             grid[myRow][myCol].cardData = ALL_CARDS.find(c => c.emoji === unitData.u) || null;
+            console.log(`✅ Враг [${myRow},${myCol}]: ${unitData.u} HP=${unitData.h}`);
           } else {
+            // Юнит мёртв (null или hp <= 0)
+            if (grid[myRow][myCol].unit) {
+              console.log(`💀 Враг удалён [${myRow},${myCol}]`);
+            }
             grid[myRow][myCol].unit = null;
             grid[myRow][myCol].hp = 0;
             grid[myRow][myCol].maxHp = 0;
@@ -746,8 +752,12 @@ function watchOpponentField() {
           if (!grid[myRow] || !grid[myRow][myCol] || !grid[myRow][myCol].unit) continue;
           
           if (enemyData && enemyData.u && enemyData.h > 0) {
+            // Обновляем HP нашего юнита
             grid[myRow][myCol].hp = enemyData.h;
+            console.log(`💔 Наш юнит [${myRow},${myCol}] HP=${enemyData.h}`);
           } else {
+            // Наш юнит убит
+            console.log(`💀 Наш юнит убит [${myRow},${myCol}]`);
             grid[myRow][myCol].unit = null;
             grid[myRow][myCol].hp = 0;
             grid[myRow][myCol].maxHp = 0;
@@ -990,7 +1000,7 @@ function drawGrid() {
           ctx.fillStyle = '#fff';
           ctx.font = 'bold ' + Math.max(6, cellSize * 0.16) + 'px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(Math.ceil(cell.hp) + '/' + cell.maxHp, x + cellSize / 2, y + cellSize - 10);
+          ctx.fillText(Math.ceil(Math.max(0, cell.hp)) + '/' + cell.maxHp, x + cellSize / 2, y + cellSize - 10);
         }
       }
     }
@@ -1233,8 +1243,7 @@ function resizeCanvas() {
   canvas.height = Math.max(180, ah);
   
   const gapBetween = 10;
-  const gapEdge = 10;
-  const totalGap = gapBetween * (COLS - 1) + gapEdge * 2;
+  const totalGap = gapBetween * (COLS - 1) + 20;
   const maxW = (canvas.width - totalGap) / COLS;
   const maxH = (canvas.height - totalGap) / ROWS;
   cellSize = Math.floor(Math.min(maxW, maxH));
