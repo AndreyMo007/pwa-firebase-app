@@ -329,6 +329,8 @@ function performAttack(row, col) {
   const cell = grid[row]?.[col];
   if (!cell || !cell.unit) return [];
   
+  console.log(`⚔️ АТАКА: [${row},${col}] урон=${cell.damage}, хил=${cell.heal||0}`);
+  
   const results = [];
   const dir = row >= 3 ? -1 : 1;
   
@@ -348,6 +350,7 @@ function performAttack(row, col) {
         results.push({ row: tr, col: c, color: 'rgba(255,40,40,0.8)', text: '-' + cell.damage });
         
         if (tc.hp <= 0) {
+          console.log(`💀 УНИЧТОЖЕН [${tr},${c}]!`);
           tc.unit = null;
           tc.hp = 0;
           tc.maxHp = 0;
@@ -476,7 +479,6 @@ function startBattlePhase() {
   if (currentMode === 'pvp') {
     if (pvpIsHost) {
       isPlayerTurn = Math.random() < 0.5;
-      console.log('🎲 Хост выбрал первый ход:', isPlayerTurn ? 'игрок' : 'противник');
     } else {
       isPlayerTurn = false;
     }
@@ -527,7 +529,7 @@ function processTurn() {
   isProcessingAction = true;
   
   const { playerMoves, enemyMoves } = checkMoves();
-  console.log(`🔄 processTurn: игрок=${playerMoves}, враг=${enemyMoves}, ход=${isPlayerTurn?'игрока':'врага'}`);
+  console.log(`🔄 processTurn: игрок=${playerMoves}, враг=${enemyMoves}, ход=${isPlayerTurn?'игрока':'врага'}, режим=${currentMode}`);
   
   if (playerMoves === 0 || enemyMoves === 0) {
     console.log('🔄 Все ходы закончились, новая расстановка');
@@ -554,14 +556,30 @@ function processTurn() {
       isProcessingAction = false;
     }
   } else if (currentMode === 'pvp') {
-    // Только хост переключает ход
+    // Переключаем ход
+    isPlayerTurn = !isPlayerTurn;
+    updatePhaseDisplay();
+    
+    // Сохраняем поле и синхронизируем состояние
+    saveMyField();
+    
     if (pvpIsHost) {
-      isPlayerTurn = !isPlayerTurn;
-      console.log('🔄 Хост переключил ход на:', isPlayerTurn ? 'игрока' : 'противника');
-      updatePhaseDisplay();
       syncGameState();
-      saveMyField();
+      console.log(`🔄 Хост переключил ход на: ${isPlayerTurn ? 'игрок' : 'противник'}`);
+    } else {
+      console.log(`🔄 Гость локально переключил ход на: ${isPlayerTurn ? 'игрок' : 'противник'}`);
     }
+    
+    // Проверяем, не закончились ли ходы
+    const { playerMoves: pm2, enemyMoves: em2 } = checkMoves();
+    if ((pm2 === 0 || em2 === 0) && pvpIsHost) {
+      console.log('🔄 Ходы закончились, начинаем новую расстановку');
+      setTimeout(() => {
+        startPlacementPhase();
+        syncGameState();
+      }, 500);
+    }
+    
     isProcessingAction = false;
   }
 }
@@ -598,6 +616,7 @@ function saveMyField() {
     enemyHpData.push(rowData);
   }
   
+  console.log('💾 Сохраняю поле в Firebase');
   set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), {
     myUnits: myUnitsData,
     enemyHp: enemyHpData,
@@ -608,24 +627,27 @@ function saveMyField() {
 function syncGameState() {
   if (!pvpRoom || currentMode !== 'pvp') return;
   
-  const stateData = {
+  console.log('🔄 Синхронизирую состояние игры:', { phase: gamePhase, isPlayerTurn, turnPlayerId: isPlayerTurn ? playerId : pvpOpponentId });
+  
+  set(ref(db, 'rooms/' + pvpRoom + '/state'), {
     phase: gamePhase,
     isPlayerTurn: isPlayerTurn,
     turnPlayerId: isPlayerTurn ? playerId : pvpOpponentId,
     hostId: pvpIsHost ? playerId : pvpOpponentId,
     timestamp: Date.now()
-  };
-  
-  console.log('📤 syncGameState:', stateData);
-  set(ref(db, 'rooms/' + pvpRoom + '/state'), stateData);
+  });
 }
 
 function watchOpponentField() {
   if (!pvpRoom || !pvpOpponentId) return;
   
+  console.log('👀 Начинаю следить за полем противника:', pvpOpponentId);
+  
   const unsub = onValue(ref(db, 'pvp_fields/' + pvpRoom + '/' + pvpOpponentId), (snap) => {
     const data = snap.val();
     if (!data) return;
+    
+    console.log('📥 Получены данные поля противника');
     
     if (data.myUnits) {
       for (let r = 0; r < 3; r++) {
@@ -693,49 +715,55 @@ function watchOpponentField() {
 function watchGameState() {
   if (!pvpRoom) return;
   
+  console.log('👀 Начинаю следить за состоянием игры');
+  
   const unsub = onValue(ref(db, 'rooms/' + pvpRoom + '/state'), (snap) => {
     const s = snap.val();
     if (!s) return;
     
-    console.log('📥 watchGameState получил:', s, '| я:', playerId, '| хост:', pvpIsHost);
+    console.log('📡 Получено состояние игры:', s);
     
-    // Хост игнорирует свои же обновления
+    // Игнорируем свои же обновления
     if (pvpIsHost && s.hostId === playerId) {
-      console.log('⏭️ Хост игнорирует своё обновление');
+      console.log('👤 Хост игнорирует своё обновление');
       return;
     }
-    // Гость игнорирует обновления не от хоста
     if (!pvpIsHost && s.hostId !== pvpOpponentId) {
-      console.log('⏭️ Гость игнорирует обновление не от хоста');
+      console.log('👤 Гость игнорирует чужое обновление');
       return;
     }
     
-    // Очищаем таймер при смене фазы
-    if (s.phase === 'playerTurn' && gamePhase === 'placement') {
-      clearTimer();
-      document.getElementById('game-timer').textContent = '';
-    }
-    
-    // Переход в расстановку
-    if (s.phase === 'placement' && gamePhase === 'playerTurn') {
-      console.log('🔄 Гость переходит в расстановку по сигналу хоста');
-      startPlacementPhase();
-      return;
-    }
-    
-    // Обновляем фазу и ход
-    const oldPhase = gamePhase;
-    const oldTurn = isPlayerTurn;
-    
-    gamePhase = s.phase;
-    
-    if (s.phase === 'playerTurn') {
-      isPlayerTurn = (s.turnPlayerId === playerId);
-      console.log('🔄 Обновление хода: isPlayerTurn=', isPlayerTurn, 'turnPlayerId=', s.turnPlayerId);
-    }
-    
-    if (oldPhase !== gamePhase || oldTurn !== isPlayerTurn) {
-      updatePhaseDisplay();
+    // Если мы гость и хост переключил фазу/ход
+    if (!pvpIsHost) {
+      const newPhase = s.phase;
+      const newTurnPlayerId = s.turnPlayerId;
+      
+      console.log(`🔄 Гость получил обновление: фаза=${newPhase}, ход игрока=${newTurnPlayerId}, мой ID=${playerId}`);
+      
+      if (newPhase === 'placement' && gamePhase === 'playerTurn') {
+        console.log('🔄 Гость переходит к расстановке');
+        startPlacementPhase();
+        return;
+      }
+      
+      if (newPhase === 'playerTurn') {
+        // Очищаем таймер если нужно
+        if (gamePhase === 'placement') {
+          clearTimer();
+          document.getElementById('game-timer').textContent = '';
+        }
+        
+        gamePhase = newPhase;
+        isPlayerTurn = (newTurnPlayerId === playerId);
+        updatePhaseDisplay();
+        
+        // Сбрасываем выделение
+        selectedUnitRow = -1;
+        selectedUnitCol = -1;
+        highlightedCells = [];
+        
+        console.log(`🎮 Гость обновил: мой ход = ${isPlayerTurn}, фаза = ${gamePhase}`);
+      }
     }
   });
   
@@ -754,6 +782,7 @@ function startPvP() {
       pvpRoom = sig.roomId;
       pvpOpponentId = sig.hostId;
       pvpIsHost = false;
+      console.log('🎮 Нашел комнату как гость:', pvpRoom);
       remove(ref(db, 'pvp_signals/' + playerId));
       remove(ref(db, 'pvp_queue/' + playerId));
       initGrid(true);
@@ -782,6 +811,7 @@ function startPvP() {
         pvpRoom = 'room_' + Date.now();
         pvpOpponentId = oppKey;
         pvpIsHost = true;
+        console.log('🎮 Создал комнату как хост:', pvpRoom);
         remove(ref(db, 'pvp_queue/' + playerId));
         remove(ref(db, 'pvp_queue/' + oppKey));
         initGrid(true);
@@ -1066,10 +1096,7 @@ canvas.onclick = e => {
         cell.hasMovedThisRound = true;
         highlightedCells = performAttack(row, col);
         
-        // Сразу сохраняем поле после атаки
-        if (currentMode === 'pvp') {
-          saveMyField();
-        }
+        console.log(`⚔️ Игрок ${playerId} атакует [${row},${col}]`);
         
         setTimeout(() => {
           highlightedCells = [];
@@ -1077,9 +1104,11 @@ canvas.onclick = e => {
           selectedUnitCol = -1;
           
           if (currentMode === 'pvp') {
-            if (pvpIsHost) {
-              processTurn(); // Хост переключает ход и синхронизирует
-            }
+            // Сохраняем поле после атаки
+            saveMyField();
+            
+            // Переключаем ход
+            processTurn();
           } else {
             processTurn();
           }
