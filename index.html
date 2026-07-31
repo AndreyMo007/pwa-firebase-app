@@ -157,8 +157,8 @@ let pvpIsHost = false;
 let pvpOpponentId = null;
 let pvpUnsubscribers = [];
 let isProcessingAction = false;
-let placementStartTime = 0; // Для синхронизации таймера
 
+// ====== БАЗОВЫЕ ФУНКЦИИ ======
 function renderAllCardsPage() {
   const g = document.getElementById('all-cards-grid');
   if (!g) return;
@@ -267,7 +267,6 @@ function buyCard(i) {
   availableCards[i] = null;
   updateElixirDisplay();
   renderCards();
-  if (currentMode === 'pvp') saveMyField();
 }
 
 function updateElixirDisplay() {
@@ -283,6 +282,7 @@ function updatePhaseDisplay() {
   else e.textContent = gamePhase;
 }
 
+// ====== ПОДСВЕТКА ======
 function calculateHighlights(row, col) {
   const hl = [];
   const cell = grid[row]?.[col];
@@ -350,6 +350,7 @@ function calculateHighlightsDown(row, col) {
   return hl;
 }
 
+// ====== АТАКА ======
 function unitAttack(row, col) {
   const cell = grid[row]?.[col];
   if (!cell || !cell.unit || cell.damage <= 0) return;
@@ -414,11 +415,6 @@ function unitAttack(row, col) {
       }
     }
   }
-  
-  if (currentMode === 'pvp') {
-    saveMyField();
-    syncAttack(row, col);
-  }
 }
 
 function enemyAttack(row, col) {
@@ -458,12 +454,9 @@ function enemyAttack(row, col) {
       }
     }
   }
-  
-  if (currentMode === 'pvp') {
-    saveMyField();
-  }
 }
 
+// ====== ФАЗЫ ИГРЫ (БЕЗ ЗАДЕРЖЕК) ======
 function checkMoves() {
   let pm = 0, em = 0;
   for (let r = 3; r < 6; r++)
@@ -475,7 +468,7 @@ function checkMoves() {
   return { playerMoves: pm, enemyMoves: em };
 }
 
-function startPlacementPhase(syncTimer = 0) {
+function startPlacementPhase() {
   console.log('🔄 ФАЗА РАССТАНОВКИ');
   if (timerInterval) clearInterval(timerInterval);
   
@@ -501,47 +494,21 @@ function startPlacementPhase(syncTimer = 0) {
   selectedPurchasedCard = null;
   renderCards();
   
-  // Используем переданное время или текущее
-  if (syncTimer > 0) {
-    placementStartTime = syncTimer;
-  } else {
-    placementStartTime = Date.now();
-  }
-  
-  updateTimer();
-  
+  timerSeconds = 20;
+  document.getElementById('game-timer').textContent = timerSeconds;
   timerInterval = setInterval(() => {
-    updateTimer();
+    timerSeconds--;
+    document.getElementById('game-timer').textContent = timerSeconds;
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
-      if (currentMode === 'pvp') {
-        if (pvpIsHost) {
-          startBattlePhase();
-          syncStateToFB();
-        }
-      } else {
+      if (currentMode === 'pvp' && pvpIsHost) {
+        startBattlePhase();
+        syncGameState();
+      } else if (currentMode === 'classic') {
         startBattlePhase();
       }
     }
-  }, 200); // Обновляем чаще для точности
-  
-  if (currentMode === 'pvp') {
-    saveMyField();
-    if (pvpIsHost) {
-      syncStateToFB();
-      // Синхронизируем время начала
-      set(ref(db, 'rooms/' + pvpRoom + '/timer'), {
-        startTime: placementStartTime,
-        duration: 20
-      });
-    }
-  }
-}
-
-function updateTimer() {
-  const elapsed = Math.floor((Date.now() - placementStartTime) / 1000);
-  timerSeconds = Math.max(0, 20 - elapsed);
-  document.getElementById('game-timer').textContent = timerSeconds;
+  }, 1000);
 }
 
 function startBattlePhase() {
@@ -558,7 +525,7 @@ function startBattlePhase() {
   
   if (currentMode === 'pvp') {
     if (pvpIsHost) {
-      isPlayerTurn = playerMoves > 0 && (Math.random() < 0.5 || enemyMoves === 0);
+      isPlayerTurn = playerMoves > 0;
     } else {
       isPlayerTurn = false;
     }
@@ -574,9 +541,8 @@ function startBattlePhase() {
   updatePhaseDisplay();
   document.getElementById('game-timer').textContent = '';
   
-  if (currentMode === 'pvp') {
-    saveMyField();
-    syncStateToFB();
+  if (!isPlayerTurn && currentMode !== 'pvp') {
+    setTimeout(() => executeEnemyTurn(), 500);
   }
 }
 
@@ -588,32 +554,31 @@ function processTurn() {
   console.log(`🔄 Ходов: игрок=${playerMoves}, враг=${enemyMoves}`);
   
   if (playerMoves === 0 && enemyMoves === 0) {
-    console.log('🔄 Все ходы закончены');
     startPlacementPhase();
-    if (currentMode === 'pvp' && pvpIsHost) syncStateToFB();
+    if (currentMode === 'pvp') syncGameState();
     isProcessingAction = false;
     return;
   }
   
   if (currentMode === 'pvp') {
-    // В PvP просто переключаем ход
     isPlayerTurn = !isPlayerTurn;
     updatePhaseDisplay();
-    saveMyField();
-    syncStateToFB();
+    syncGameState();
     isProcessingAction = false;
     return;
   }
   
-  // Классический режим
   isPlayerTurn = !isPlayerTurn;
   updatePhaseDisplay();
   
   if (!isPlayerTurn && enemyMoves > 0) {
-    setTimeout(() => executeEnemyTurn(), 500);
+    setTimeout(() => {
+      executeEnemyTurn();
+      isProcessingAction = false;
+    }, 500);
+  } else {
+    isProcessingAction = false;
   }
-  
-  isProcessingAction = false;
 }
 
 function executeEnemyTurn() {
@@ -638,16 +603,16 @@ function executeEnemyTurn() {
         highlightedCells = [];
         enemyActionHighlights = [];
         processTurn();
-      }, 1500);
-    }, 800);
+      }, 1000);
+    }, 600);
   } else {
     processTurn();
   }
 }
 
-// ====== PVP СИНХРОНИЗАЦИЯ ======
+// ====== PVP СИНХРОНИЗАЦИЯ (УПРОЩЁННАЯ) ======
 function saveMyField() {
-  if (!pvpRoom) return;
+  if (!pvpRoom || currentMode !== 'pvp') return;
   
   const myUnitsData = [];
   for (let r = 3; r < 6; r++) {
@@ -691,6 +656,17 @@ function saveMyField() {
   });
 }
 
+function syncGameState() {
+  if (!pvpRoom || currentMode !== 'pvp') return;
+  
+  set(ref(db, 'rooms/' + pvpRoom + '/state'), {
+    phase: gamePhase,
+    isPlayerTurn: isPlayerTurn,
+    hostTurn: pvpIsHost ? isPlayerTurn : !isPlayerTurn,
+    timestamp: Date.now()
+  });
+}
+
 function watchOpponentField() {
   if (!pvpRoom || !pvpOpponentId) return;
   
@@ -698,6 +674,7 @@ function watchOpponentField() {
     const data = snap.val();
     if (!data) return;
     
+    // Обновляем врагов (ряды 0-2)
     if (data.myUnits) {
       for (let r = 0; r < 3; r++) {
         if (!data.myUnits[r]) continue;
@@ -731,6 +708,7 @@ function watchOpponentField() {
       }
     }
     
+    // Обновляем HP своих юнитов
     if (data.enemyUnits) {
       for (let r = 0; r < 3; r++) {
         if (!data.enemyUnits[r]) continue;
@@ -761,23 +739,6 @@ function watchOpponentField() {
   pvpUnsubscribers.push(unsub);
 }
 
-function syncStateToFB() {
-  if (!pvpRoom) return;
-  set(ref(db, 'rooms/' + pvpRoom + '/state'), {
-    phase: gamePhase,
-    isPlayerTurn: isPlayerTurn,
-    currentPlayer: isPlayerTurn ? playerId : pvpOpponentId
-  });
-}
-
-function syncAttack(row, col) {
-  if (!pvpRoom) return;
-  set(ref(db, 'rooms/' + pvpRoom + '/attack'), {
-    from: playerId,
-    time: Date.now()
-  });
-}
-
 function watchGameState() {
   if (!pvpRoom) return;
   
@@ -785,8 +746,10 @@ function watchGameState() {
     const s = snap.val();
     if (!s) return;
     
-    // Обновляем фазу
-    if (s.phase !== gamePhase) {
+    // Игнорируем свои же обновления
+    if (Date.now() - s.timestamp < 100) return;
+    
+    if (s.phase && s.phase !== gamePhase) {
       if (s.phase === 'placement') {
         startPlacementPhase();
       } else if (s.phase === 'playerTurn') {
@@ -794,41 +757,14 @@ function watchGameState() {
       }
     }
     
-    // Обновляем чей ход
     if (s.phase === 'playerTurn') {
-      const newIsPlayerTurn = (s.currentPlayer === playerId);
-      if (isPlayerTurn !== newIsPlayerTurn) {
-        isPlayerTurn = newIsPlayerTurn;
-        updatePhaseDisplay();
+      if (pvpIsHost) {
+        isPlayerTurn = s.hostTurn;
+      } else {
+        isPlayerTurn = !s.hostTurn;
       }
+      updatePhaseDisplay();
     }
-  });
-  
-  pvpUnsubscribers.push(unsub);
-}
-
-function watchOpponentAttack() {
-  if (!pvpRoom) return;
-  
-  const unsub = onValue(ref(db, 'rooms/' + pvpRoom + '/attack'), (snap) => {
-    const a = snap.val();
-    if (!a || a.from === playerId || Date.now() - a.time > 3000) return;
-    saveMyField();
-  });
-  
-  pvpUnsubscribers.push(unsub);
-}
-
-function watchTimerSync() {
-  if (!pvpRoom || pvpIsHost) return;
-  
-  const unsub = onValue(ref(db, 'rooms/' + pvpRoom + '/timer'), (snap) => {
-    const data = snap.val();
-    if (!data || gamePhase !== 'placement') return;
-    
-    // Синхронизируем таймер с хостом
-    placementStartTime = data.startTime;
-    updateTimer();
   });
   
   pvpUnsubscribers.push(unsub);
@@ -852,10 +788,9 @@ function startPvP() {
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
       setTimeout(() => {
+        saveMyField();
         watchOpponentField();
         watchGameState();
-        watchOpponentAttack();
-        watchTimerSync();
       }, 500);
     }
   });
@@ -882,10 +817,9 @@ function startPvP() {
         document.getElementById('pvp-waiting').classList.remove('active');
         startGame();
         setTimeout(() => {
+          saveMyField();
           watchOpponentField();
           watchGameState();
-          watchOpponentAttack();
-          watchTimerSync();
         }, 500);
       }
     });
@@ -927,6 +861,7 @@ function showLobby() {
   lobby.style.display = 'flex';
 }
 
+// ====== ОТРИСОВКА ======
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#0d1117';
@@ -1058,6 +993,7 @@ function drawGrid() {
   });
 }
 
+// ====== ОБРАБОТЧИКИ ======
 document.getElementById('play-button').onclick = () => {
   if (currentMode === 'classic') {
     initGrid(false);
@@ -1097,11 +1033,12 @@ document.getElementById('back-button').onclick = () => {
   if (timerInterval) clearInterval(timerInterval);
   if (gameLoopId) cancelAnimationFrame(gameLoopId);
   
+  // Отписываемся от всех Firebase слушателей
   pvpUnsubscribers.forEach(unsub => unsub());
   pvpUnsubscribers = [];
   
   if (pvpRoom) {
-    remove(ref(db, 'pvp_fields/' + pvpRoom));
+    remove(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId));
     remove(ref(db, 'rooms/' + pvpRoom));
     pvpRoom = null;
     pvpOpponentId = null;
@@ -1147,6 +1084,7 @@ canvas.onclick = e => {
     return;
   }
   
+  // Фаза расстановки
   if (gamePhase === 'placement') {
     if (row >= 3 && selectedPurchasedCard && !grid[row][col].unit) {
       const card = selectedPurchasedCard.card;
@@ -1166,11 +1104,13 @@ canvas.onclick = e => {
     return;
   }
   
+  // Фаза боя
   if (gamePhase === 'playerTurn' && isPlayerTurn && !isProcessingAction) {
     const cell = grid[row]?.[col];
     
     if (row >= 3 && cell && cell.unit && !cell.hasMovedThisRound) {
       if (selectedUnitRow === row && selectedUnitCol === col) {
+        // Атака
         isProcessingAction = true;
         cell.hasMovedThisRound = true;
         const attackTargets = calculateHighlights(row, col);
@@ -1185,11 +1125,13 @@ canvas.onclick = e => {
             highlightedCells = [];
             if (currentMode === 'pvp') {
               saveMyField();
+              syncGameState();
             }
             processTurn();
           }, 500);
         }, 300);
       } else {
+        // Выбор юнита
         selectedUnitRow = row;
         selectedUnitCol = col;
         highlightedCells = calculateHighlights(row, col);
@@ -1217,6 +1159,7 @@ document.getElementById('settings-overlay').onclick = () => {
   document.getElementById('menu-toggle').classList.remove('active');
 };
 
+// ====== РЕСАЙЗ ======
 function resizeCanvas() {
   const cont = document.getElementById('game-container');
   const ca = document.getElementById('cards-area');
@@ -1250,6 +1193,7 @@ window.addEventListener('orientationchange', () => {
   if (gameScreen.classList.contains('active')) setTimeout(resizeCanvas, 500);
 });
 
+// ====== ЗАГРУЗКА ======
 let progress = 0;
 const loadInterval = setInterval(() => {
   progress += Math.random() * 15;
