@@ -156,6 +156,7 @@ let pvpRoom = null;
 let pvpIsHost = false;
 let pvpOpponentId = null;
 let pvpUnsubscribers = [];
+let isProcessingAction = false;
 
 function renderAllCardsPage() {
   const g = document.getElementById('all-cards-grid');
@@ -265,7 +266,6 @@ function buyCard(i) {
   availableCards[i] = null;
   updateElixirDisplay();
   renderCards();
-  if (currentMode === 'pvp') saveMyField();
 }
 
 function updateElixirDisplay() {
@@ -555,6 +555,9 @@ function startBattlePhase() {
 }
 
 function processTurn() {
+  if (isProcessingAction) return;
+  isProcessingAction = true;
+  
   const { playerMoves, enemyMoves } = checkMoves();
   console.log(`🔄 Ходов: игрок=${playerMoves}, враг=${enemyMoves}`);
   
@@ -562,6 +565,16 @@ function processTurn() {
     console.log('🔄 Новая фаза расстановки');
     startPlacementPhase();
     if (currentMode === 'pvp' && pvpIsHost) syncStateToFB();
+    isProcessingAction = false;
+    return;
+  }
+  
+  if (currentMode === 'pvp') {
+    isPlayerTurn = !isPlayerTurn;
+    updatePhaseDisplay();
+    saveMyField();
+    syncStateToFB();
+    isProcessingAction = false;
     return;
   }
   
@@ -577,6 +590,8 @@ function processTurn() {
     saveMyField();
     syncStateToFB();
   }
+  
+  isProcessingAction = false;
 }
 
 function executeEnemyTurn() {
@@ -605,33 +620,50 @@ function executeEnemyTurn() {
   }
 }
 
-// ====== PVP СИНХРОНИЗАЦИЯ (как в рабочем коде) ======
+// ====== PVP СИНХРОНИЗАЦИЯ ======
 function saveMyField() {
   if (!pvpRoom) return;
   
-  const myUnits = [];
+  const myUnitsData = [];
   for (let r = 3; r < 6; r++) {
-    myUnits[r - 3] = [];
+    const rowData = [];
     for (let c = 0; c < COLS; c++) {
-      const cell = grid[r][c];
-      myUnits[r - 3][c] = cell.unit ? {
-        u: cell.unit, h: cell.hp, mh: cell.maxHp,
-        d: cell.damage, ar: cell.attackRange,
-        heal: cell.heal || 0, hm: cell.hasMovedThisRound
-      } : null;
+      const cell = grid[r]?.[c];
+      if (cell && cell.unit && cell.hp > 0) {
+        rowData.push({
+          u: cell.unit, h: cell.hp, mh: cell.maxHp,
+          d: cell.damage, ar: cell.attackRange, heal: cell.heal || 0,
+          hm: cell.hasMovedThisRound
+        });
+      } else {
+        rowData.push(null);
+      }
     }
+    myUnitsData.push(rowData);
   }
   
-  const enemyHp = [];
+  const enemyUnitsData = [];
   for (let r = 0; r < 3; r++) {
-    enemyHp[r] = [];
+    const rowData = [];
     for (let c = 0; c < COLS; c++) {
-      const cell = grid[r][c];
-      enemyHp[r][c] = cell.unit ? { h: cell.hp, alive: cell.hp > 0 } : null;
+      const cell = grid[r]?.[c];
+      if (cell && cell.unit && cell.hp > 0) {
+        rowData.push({
+          u: cell.unit, h: cell.hp, mh: cell.maxHp,
+          d: cell.damage, ar: cell.attackRange, heal: cell.heal || 0
+        });
+      } else {
+        rowData.push(null);
+      }
     }
+    enemyUnitsData.push(rowData);
   }
   
-  set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), { myUnits, enemyHp });
+  set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), {
+    myUnits: myUnitsData,
+    enemyUnits: enemyUnitsData,
+    timestamp: Date.now()
+  });
 }
 
 function watchOpponentField() {
@@ -645,43 +677,56 @@ function watchOpponentField() {
       for (let r = 0; r < 3; r++) {
         if (!data.myUnits[r]) continue;
         for (let c = 0; c < COLS; c++) {
-          const myRow = 2 - r, myCol = 3 - c;
+          const myRow = 2 - r;
+          const myCol = 3 - c;
           const unitData = data.myUnits[r][c];
           
-          if (unitData && unitData.u) {
-            if (!grid[myRow]) grid[myRow] = [];
-            if (!grid[myRow][myCol]) grid[myRow][myCol] = { color: '#ff4444', unit: null, hp: 0, maxHp: 0, damage: 0, attackRange: 0, heal: 0, hasMovedThisRound: false, cardData: null };
+          if (!grid[myRow] || !grid[myRow][myCol]) continue;
+          
+          if (unitData && unitData.u && unitData.h > 0) {
             grid[myRow][myCol].unit = unitData.u;
             grid[myRow][myCol].hp = unitData.h;
-            grid[myRow][myCol].maxHp = unitData.mh;
-            grid[myRow][myCol].damage = unitData.d;
-            grid[myRow][myCol].attackRange = unitData.ar;
+            grid[myRow][myCol].maxHp = unitData.mh || unitData.h;
+            grid[myRow][myCol].damage = unitData.d || 0;
+            grid[myRow][myCol].attackRange = unitData.ar || 1;
             grid[myRow][myCol].heal = unitData.heal || 0;
-          } else if (!unitData || !unitData.u) {
-            if (grid[myRow] && grid[myRow][myCol]) {
-              grid[myRow][myCol].unit = null;
-              grid[myRow][myCol].hp = 0;
-              grid[myRow][myCol].cardData = null;
-            }
+            grid[myRow][myCol].hasMovedThisRound = unitData.hm || false;
+            grid[myRow][myCol].cardData = ALL_CARDS.find(c => c.emoji === unitData.u) || null;
+          } else {
+            grid[myRow][myCol].unit = null;
+            grid[myRow][myCol].hp = 0;
+            grid[myRow][myCol].maxHp = 0;
+            grid[myRow][myCol].damage = 0;
+            grid[myRow][myCol].attackRange = 0;
+            grid[myRow][myCol].heal = 0;
+            grid[myRow][myCol].hasMovedThisRound = false;
+            grid[myRow][myCol].cardData = null;
           }
         }
       }
     }
     
-    if (data.enemyHp) {
+    if (data.enemyUnits) {
       for (let r = 0; r < 3; r++) {
-        if (!data.enemyHp[r]) continue;
+        if (!data.enemyUnits[r]) continue;
         for (let c = 0; c < COLS; c++) {
-          const myRow = 5 - r, myCol = 3 - c;
-          const hpData = data.enemyHp[r][c];
+          const myRow = 5 - r;
+          const myCol = 3 - c;
+          const enemyData = data.enemyUnits[r][c];
           
-          if (hpData && grid[myRow] && grid[myRow][myCol] && grid[myRow][myCol].unit) {
-            grid[myRow][myCol].hp = hpData.h;
-            if (!hpData.alive || hpData.h <= 0) {
-              grid[myRow][myCol].unit = null;
-              grid[myRow][myCol].hp = 0;
-              grid[myRow][myCol].cardData = null;
-            }
+          if (!grid[myRow] || !grid[myRow][myCol] || !grid[myRow][myCol].unit) continue;
+          
+          if (enemyData && enemyData.u && enemyData.h > 0) {
+            grid[myRow][myCol].hp = enemyData.h;
+          } else {
+            grid[myRow][myCol].unit = null;
+            grid[myRow][myCol].hp = 0;
+            grid[myRow][myCol].maxHp = 0;
+            grid[myRow][myCol].damage = 0;
+            grid[myRow][myCol].attackRange = 0;
+            grid[myRow][myCol].heal = 0;
+            grid[myRow][myCol].hasMovedThisRound = false;
+            grid[myRow][myCol].cardData = null;
           }
         }
       }
@@ -691,11 +736,12 @@ function watchOpponentField() {
   pvpUnsubscribers.push(unsub);
 }
 
+// ====== ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ ФАЗ ======
 function syncStateToFB() {
   if (!pvpRoom) return;
   set(ref(db, 'rooms/' + pvpRoom + '/state'), {
     phase: gamePhase,
-    isPlayerTurn,
+    isPlayerTurn: isPlayerTurn,
     currentPlayer: isPlayerTurn ? playerId : pvpOpponentId
   });
 }
@@ -715,14 +761,20 @@ function watchGameState() {
     const s = snap.val();
     if (!s) return;
     
-    if (s.currentPlayer === playerId) {
+    // Обновляем фазу и ход
+    if (s.phase !== gamePhase) {
       gamePhase = s.phase;
-      isPlayerTurn = true;
-    } else {
-      gamePhase = s.phase;
-      isPlayerTurn = false;
+      if (gamePhase === 'playerTurn') {
+        // В фазе боя определяем чей ход
+        isPlayerTurn = (s.currentPlayer === playerId);
+      } else {
+        isPlayerTurn = false;
+      }
+      updatePhaseDisplay();
+    } else if (gamePhase === 'playerTurn' && isPlayerTurn !== (s.currentPlayer === playerId)) {
+      isPlayerTurn = (s.currentPlayer === playerId);
+      updatePhaseDisplay();
     }
-    updatePhaseDisplay();
   });
   
   pvpUnsubscribers.push(unsub);
@@ -1070,11 +1122,12 @@ canvas.onclick = e => {
     return;
   }
   
-  if (gamePhase === 'playerTurn' && isPlayerTurn) {
+  if (gamePhase === 'playerTurn' && isPlayerTurn && !isProcessingAction) {
     const cell = grid[row]?.[col];
     
     if (row >= 3 && cell && cell.unit && !cell.hasMovedThisRound) {
       if (selectedUnitRow === row && selectedUnitCol === col) {
+        isProcessingAction = true;
         cell.hasMovedThisRound = true;
         const attackTargets = calculateHighlights(row, col);
         highlightedCells = attackTargets;
@@ -1088,7 +1141,7 @@ canvas.onclick = e => {
             highlightedCells = [];
             if (currentMode === 'pvp') saveMyField();
             processTurn();
-          }, 600);
+          }, 500);
         }, 300);
       } else {
         selectedUnitRow = row;
@@ -1135,8 +1188,7 @@ function resizeCanvas() {
   canvas.height = Math.max(180, ah);
   
   const gapBetween = 10;
-  const gapEdge = 10;
-  const totalGap = gapBetween * (COLS - 1) + gapEdge * 2;
+  const totalGap = gapBetween * (COLS - 1) + 20;
   const maxW = (canvas.width - totalGap) / COLS;
   const maxH = (canvas.height - totalGap) / ROWS;
   cellSize = Math.floor(Math.min(maxW, maxH));
