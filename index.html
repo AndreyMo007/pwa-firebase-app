@@ -157,6 +157,7 @@ let pvpIsHost = false;
 let pvpOpponentId = null;
 let pvpUnsubscribers = [];
 let isProcessingAction = false;
+let placementStartTime = 0; // Для синхронизации таймера
 
 function renderAllCardsPage() {
   const g = document.getElementById('all-cards-grid');
@@ -266,6 +267,7 @@ function buyCard(i) {
   availableCards[i] = null;
   updateElixirDisplay();
   renderCards();
+  if (currentMode === 'pvp') saveMyField();
 }
 
 function updateElixirDisplay() {
@@ -473,7 +475,7 @@ function checkMoves() {
   return { playerMoves: pm, enemyMoves: em };
 }
 
-function startPlacementPhase() {
+function startPlacementPhase(syncTimer = 0) {
   console.log('🔄 ФАЗА РАССТАНОВКИ');
   if (timerInterval) clearInterval(timerInterval);
   
@@ -499,11 +501,17 @@ function startPlacementPhase() {
   selectedPurchasedCard = null;
   renderCards();
   
-  timerSeconds = 20;
-  document.getElementById('game-timer').textContent = timerSeconds;
+  // Используем переданное время или текущее
+  if (syncTimer > 0) {
+    placementStartTime = syncTimer;
+  } else {
+    placementStartTime = Date.now();
+  }
+  
+  updateTimer();
+  
   timerInterval = setInterval(() => {
-    timerSeconds--;
-    document.getElementById('game-timer').textContent = timerSeconds;
+    updateTimer();
     if (timerSeconds <= 0) {
       clearInterval(timerInterval);
       if (currentMode === 'pvp') {
@@ -515,12 +523,25 @@ function startPlacementPhase() {
         startBattlePhase();
       }
     }
-  }, 1000);
+  }, 200); // Обновляем чаще для точности
   
   if (currentMode === 'pvp') {
     saveMyField();
-    if (pvpIsHost) syncStateToFB();
+    if (pvpIsHost) {
+      syncStateToFB();
+      // Синхронизируем время начала
+      set(ref(db, 'rooms/' + pvpRoom + '/timer'), {
+        startTime: placementStartTime,
+        duration: 20
+      });
+    }
   }
+}
+
+function updateTimer() {
+  const elapsed = Math.floor((Date.now() - placementStartTime) / 1000);
+  timerSeconds = Math.max(0, 20 - elapsed);
+  document.getElementById('game-timer').textContent = timerSeconds;
 }
 
 function startBattlePhase() {
@@ -529,6 +550,11 @@ function startBattlePhase() {
   
   gamePhase = 'playerTurn';
   const { playerMoves, enemyMoves } = checkMoves();
+  
+  if (playerMoves === 0 && enemyMoves === 0) {
+    startPlacementPhase();
+    return;
+  }
   
   if (currentMode === 'pvp') {
     if (pvpIsHost) {
@@ -561,8 +587,8 @@ function processTurn() {
   const { playerMoves, enemyMoves } = checkMoves();
   console.log(`🔄 Ходов: игрок=${playerMoves}, враг=${enemyMoves}`);
   
-  if (playerMoves === 0 || enemyMoves === 0) {
-    console.log('🔄 Новая фаза расстановки');
+  if (playerMoves === 0 && enemyMoves === 0) {
+    console.log('🔄 Все ходы закончены');
     startPlacementPhase();
     if (currentMode === 'pvp' && pvpIsHost) syncStateToFB();
     isProcessingAction = false;
@@ -570,6 +596,7 @@ function processTurn() {
   }
   
   if (currentMode === 'pvp') {
+    // В PvP просто переключаем ход
     isPlayerTurn = !isPlayerTurn;
     updatePhaseDisplay();
     saveMyField();
@@ -578,17 +605,12 @@ function processTurn() {
     return;
   }
   
-  if (!isPlayerTurn) {
-    console.log('👾 Ход врага');
-    executeEnemyTurn();
-  }
-  
+  // Классический режим
   isPlayerTurn = !isPlayerTurn;
   updatePhaseDisplay();
   
-  if (currentMode === 'pvp') {
-    saveMyField();
-    syncStateToFB();
+  if (!isPlayerTurn && enemyMoves > 0) {
+    setTimeout(() => executeEnemyTurn(), 500);
   }
   
   isProcessingAction = false;
@@ -615,8 +637,11 @@ function executeEnemyTurn() {
       setTimeout(() => {
         highlightedCells = [];
         enemyActionHighlights = [];
+        processTurn();
       }, 1500);
     }, 800);
+  } else {
+    processTurn();
   }
 }
 
@@ -736,7 +761,6 @@ function watchOpponentField() {
   pvpUnsubscribers.push(unsub);
 }
 
-// ====== ИСПРАВЛЕННАЯ СИНХРОНИЗАЦИЯ ФАЗ ======
 function syncStateToFB() {
   if (!pvpRoom) return;
   set(ref(db, 'rooms/' + pvpRoom + '/state'), {
@@ -761,19 +785,22 @@ function watchGameState() {
     const s = snap.val();
     if (!s) return;
     
-    // Обновляем фазу и ход
+    // Обновляем фазу
     if (s.phase !== gamePhase) {
-      gamePhase = s.phase;
-      if (gamePhase === 'playerTurn') {
-        // В фазе боя определяем чей ход
-        isPlayerTurn = (s.currentPlayer === playerId);
-      } else {
-        isPlayerTurn = false;
+      if (s.phase === 'placement') {
+        startPlacementPhase();
+      } else if (s.phase === 'playerTurn') {
+        startBattlePhase();
       }
-      updatePhaseDisplay();
-    } else if (gamePhase === 'playerTurn' && isPlayerTurn !== (s.currentPlayer === playerId)) {
-      isPlayerTurn = (s.currentPlayer === playerId);
-      updatePhaseDisplay();
+    }
+    
+    // Обновляем чей ход
+    if (s.phase === 'playerTurn') {
+      const newIsPlayerTurn = (s.currentPlayer === playerId);
+      if (isPlayerTurn !== newIsPlayerTurn) {
+        isPlayerTurn = newIsPlayerTurn;
+        updatePhaseDisplay();
+      }
     }
   });
   
@@ -787,6 +814,21 @@ function watchOpponentAttack() {
     const a = snap.val();
     if (!a || a.from === playerId || Date.now() - a.time > 3000) return;
     saveMyField();
+  });
+  
+  pvpUnsubscribers.push(unsub);
+}
+
+function watchTimerSync() {
+  if (!pvpRoom || pvpIsHost) return;
+  
+  const unsub = onValue(ref(db, 'rooms/' + pvpRoom + '/timer'), (snap) => {
+    const data = snap.val();
+    if (!data || gamePhase !== 'placement') return;
+    
+    // Синхронизируем таймер с хостом
+    placementStartTime = data.startTime;
+    updateTimer();
   });
   
   pvpUnsubscribers.push(unsub);
@@ -813,6 +855,7 @@ function startPvP() {
         watchOpponentField();
         watchGameState();
         watchOpponentAttack();
+        watchTimerSync();
       }, 500);
     }
   });
@@ -842,6 +885,7 @@ function startPvP() {
           watchOpponentField();
           watchGameState();
           watchOpponentAttack();
+          watchTimerSync();
         }, 500);
       }
     });
@@ -1139,7 +1183,9 @@ canvas.onclick = e => {
             selectedUnitRow = -1;
             selectedUnitCol = -1;
             highlightedCells = [];
-            if (currentMode === 'pvp') saveMyField();
+            if (currentMode === 'pvp') {
+              saveMyField();
+            }
             processTurn();
           }, 500);
         }, 300);
