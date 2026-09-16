@@ -42,13 +42,9 @@
     #home-page { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; text-align: center; }
     #cards-page { display: none; width: 100%; } #cards-page.active { display: block; } .page-title { font-size: 20px; font-weight: bold; color: #ffd93d; text-align: center; margin-bottom: 14px; }
     .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 5px; }
-
-    /* ====== ВКЛАДКИ КАРТЫ / ГЕРОИ ====== */
     .page-tabs { display: flex; gap: 8px; margin-bottom: 12px; padding: 0 5px; }
     .page-tab { flex: 1; padding: 9px 6px; border-radius: 20px; border: 2px solid rgba(77,150,255,0.35); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75); font-size: 12px; font-weight: bold; letter-spacing: 1px; cursor: pointer; transition: all 0.2s ease; }
     .page-tab.active { background: linear-gradient(135deg,#4d96ff,#6bcb77); color: #fff; border-color: #ffd93d; box-shadow: 0 0 14px rgba(77,150,255,0.5); }
-
-    /* ====== СЕТКА ГЕРОЕВ ====== */
     .heroes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 5px; }
     .hero-card { background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.18); border-radius: 12px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s ease; }
     .hero-card:hover { transform: translateY(-2px); border-color: rgba(77,150,255,0.7); }
@@ -59,11 +55,8 @@
     .hero-desc { font-size: 9px; color: rgba(255,255,255,0.72); text-align: center; line-height: 1.3; min-height: 24px; }
     .hero-pick { font-size: 9px; padding: 4px 12px; border-radius: 12px; border: none; background: linear-gradient(135deg,#4d96ff,#6bcb77); color: #fff; font-weight: bold; cursor: pointer; letter-spacing: 1px; }
     .hero-card.selected .hero-pick { background: linear-gradient(135deg,#ffd93d,#ffaa00); color: #000; }
-
     .card-info-image { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 36px; background: rgba(255,255,255,0.05); padding: 4px; overflow: hidden; }
     .card-info-image img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; display: block; }
-
-    /* ====== СТРАНИЦА РЕЖИМОВ ====== */
     #mode-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg,#1a1a2e 0%,#16213e 100%); z-index: 60; display: none; flex-direction: column; }
     #mode-page.active { display: flex; animation: pageIn 0.25s ease; }
     @keyframes pageIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
@@ -83,10 +76,6 @@
     .mode-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .mode-card-name { color: #fff; font-size: 12px; font-weight: bold; letter-spacing: 1px; text-align: center; }
     .mode-card-desc { color: rgba(255,255,255,0.6); font-size: 9px; text-align: center; }
-
-    .mode-modal-old { display: none !important; }
-    .mode-btn-option { width: 200px; height: 55px; background: linear-gradient(135deg,#4d96ff,#6bcb77); border: none; border-radius: 30px; color: white; font-size: 18px; font-weight: bold; cursor: pointer; letter-spacing: 2px; } .mode-btn-option.pvp { background: linear-gradient(135deg,#ff6b6b,#ffd93d); } .mode-btn-option:hover { transform: scale(1.05); }
-    .mode-btn-close { margin-top: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; }
     #pvp-waiting { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 150; flex-direction: column; } #pvp-waiting.active { display: flex; }
     .pvp-waiting-content { text-align: center; color: white; } .pvp-waiting-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #ffd93d; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; } @keyframes spin { to { transform: rotate(360deg); } }
     .pvp-waiting-text { font-size: 18px; color: #ffd93d; margin-bottom: 15px; } .pvp-waiting-cancel { background: rgba(255,107,107,0.9); border: none; color: white; padding: 10px 25px; border-radius: 20px; cursor: pointer; font-size: 14px; margin-top: 20px; }
@@ -186,7 +175,6 @@
     </div>
   </div>
 
-  <!-- ====== СТРАНИЦА ВЫБОРА РЕЖИМОВ ====== -->
   <div id="mode-page">
     <div class="full-page-header">
       <button class="full-page-back" id="mode-page-back">←</button>
@@ -231,7 +219,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, remove, get, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const fc = {
   apiKey: "AIzaSyCgx-V8GP_cgCZLGws2e1pHZ5OnMy20nxk",
@@ -255,26 +243,6 @@ const RARITY_SOLID = {
   common: '#999999', rare: '#4d96ff', epic: '#c440ff', legendary: '#ffd93d'
 };
 
-/* =========================================================================
-   КАК ДОБАВИТЬ КАРТИНКИ ДЛЯ БОЙЦОВ И ГЕРОЕВ:
-   -------------------------------------------------------------------------
-   У каждой карты/героя есть два поля:
-     • emoji — запасной вариант (используется, если картинка не загрузилась)
-     • image — путь к картинке. Примеры:
-         'images/warrior.png'         — локальный файл рядом с index.html
-         'img/warrior.png'
-         'https://site.com/warrior.png' — картинка с интернета
-   Если image = null, будет показан emoji.
-
-   Рекомендации:
-     • Формат PNG (прозрачный фон) или JPG.
-     • Квадратные, например 128×128 или 256×256.
-     • Для бойцов — маленькие иконки, для героев — круглые портреты.
-
-   Пример:
-     { id:'warrior', name:'Воин', emoji:'⚔️', image:'images/warrior.png', ... }
-   ========================================================================= */
-
 const ALL_CARDS = [
   { id: 'warrior',  name: 'Воин',    emoji: '⚔️', image: null, cost: 3, hp: 10, damage: 4, attackRange: 1, maxHp: 10 },
   { id: 'archer',   name: 'Лучник',  emoji: '🏹', image: null, cost: 2, hp: 6,  damage: 3, attackRange: 3, maxHp: 6 },
@@ -289,49 +257,22 @@ const ALL_CARDS = [
 ];
 
 const ALL_HEROES = [
-  {
-    id: 'commander', name: 'Командир', emoji: '🎖️', image: null, rarity: 'rare',
-    desc: '+1 HP всем вашим бойцам',
-    bonusHp: 1, bonusDmg: 0, bonusBaseHp: 0, bonusElixir: 0
-  },
-  {
-    id: 'warlord', name: 'Воевода', emoji: '⚔️', image: null, rarity: 'epic',
-    desc: '+1 урону вашим бойцам',
-    bonusHp: 0, bonusDmg: 1, bonusBaseHp: 0, bonusElixir: 0
-  },
-  {
-    id: 'guardian', name: 'Хранитель', emoji: '🛡️', image: null, rarity: 'rare',
-    desc: '+1 жизнь вам (доп. сердце)',
-    bonusHp: 0, bonusDmg: 0, bonusBaseHp: 1, bonusElixir: 0
-  },
-  {
-    id: 'archmage', name: 'Архимаг', emoji: '🔮', image: null, rarity: 'legendary',
-    desc: '+2 эликсира каждую расстановку',
-    bonusHp: 0, bonusDmg: 0, bonusBaseHp: 0, bonusElixir: 2
-  },
-  {
-    id: 'necromancer', name: 'Некромант', emoji: '💀', image: null, rarity: 'epic',
-    desc: '+1 HP и +1 урон бойцам',
-    bonusHp: 1, bonusDmg: 1, bonusBaseHp: 0, bonusElixir: 0
-  },
-  {
-    id: 'titan', name: 'Титан', emoji: '🗿', image: null, rarity: 'legendary',
-    desc: '+2 HP бойцам и +1 жизнь вам',
-    bonusHp: 2, bonusDmg: 0, bonusBaseHp: 1, bonusElixir: 0
-  }
+  { id: 'commander', name: 'Командир', emoji: '🎖️', image: null, rarity: 'rare',
+    desc: '+1 HP всем вашим бойцам', bonusHp: 1, bonusDmg: 0, bonusBaseHp: 0, bonusElixir: 0 },
+  { id: 'warlord', name: 'Воевода', emoji: '⚔️', image: null, rarity: 'epic',
+    desc: '+1 урону вашим бойцам', bonusHp: 0, bonusDmg: 1, bonusBaseHp: 0, bonusElixir: 0 },
+  { id: 'guardian', name: 'Хранитель', emoji: '🛡️', image: null, rarity: 'rare',
+    desc: '+20 HP вашей базе', bonusHp: 0, bonusDmg: 0, bonusBaseHp: 20, bonusElixir: 0 },
+  { id: 'archmage', name: 'Архимаг', emoji: '🔮', image: null, rarity: 'legendary',
+    desc: '+2 эликсира каждую расстановку', bonusHp: 0, bonusDmg: 0, bonusBaseHp: 0, bonusElixir: 2 },
+  { id: 'necromancer', name: 'Некромант', emoji: '💀', image: null, rarity: 'epic',
+    desc: '+1 HP и +1 урон бойцам', bonusHp: 1, bonusDmg: 1, bonusBaseHp: 0, bonusElixir: 0 },
+  { id: 'titan', name: 'Титан', emoji: '🗿', image: null, rarity: 'legendary',
+    desc: '+2 HP бойцам и +20 HP базе', bonusHp: 2, bonusDmg: 0, bonusBaseHp: 20, bonusElixir: 0 }
 ];
 
 const DEFAULT_HERO = ALL_HEROES[0];
 
-/* ====== РЕЖИМЫ ИГРЫ ======
-   У режима:
-     • id — код режима (classic / pvp)
-     • name — название на карточке
-     • emoji — иконка (если нет image)
-     • image — путь к картинке (та же логика, что и у бойцов)
-     • desc — короткое описание
-     • comingSoon — true, если режим ещё не доступен (заблокирован)
-*/
 const MODES = [
   { id: 'classic',   name: 'КЛАССИКА',     emoji: '⚔️', image: null, desc: 'Бой против ИИ',        comingSoon: false },
   { id: 'pvp',       name: 'PvP ОНЛАЙН',   emoji: '👥', image: null, desc: 'Играть с игроками',     comingSoon: false },
@@ -341,7 +282,6 @@ const MODES = [
   { id: 'tournament',name: 'ТУРНИР',       emoji: '👑', image: null, desc: 'Скоро',                 comingSoon: true  }
 ];
 
-/* ================= КЭШ КАРТИНОК ================= */
 const imageCache = new Map();
 function loadImage(src) {
   if (!src) return null;
@@ -350,7 +290,7 @@ function loadImage(src) {
   img.crossOrigin = 'anonymous';
   const rec = { img, loaded: false, failed: false };
   img.onload = () => { rec.loaded = true; };
-  img.onerror = () => { rec.failed = true; console.warn('Не удалось загрузить:', src); };
+  img.onerror = () => { rec.failed = true; };
   img.src = src;
   imageCache.set(src, rec);
   return rec;
@@ -371,7 +311,8 @@ const ctx = canvas.getContext('2d');
 
 const COLS = 4, ROWS = 6;
 const BASE_AREA_H = 46;
-const MAX_BASE_HP = 3;
+const MAX_BASE_HP = 100;
+const BASE_DAMAGE_MULT = 3;
 let cellSize = 30, gridOffsetX = 0, gridOffsetY = 0;
 let gameLoopId = null, timerInterval = null;
 let elixir = 10, MAX_ELIXIR = 15;
@@ -381,27 +322,35 @@ let isPlayerTurn = false;
 let availableCards = [], purchasedCards = [], grid = [];
 let selectedUnitRow = -1, selectedUnitCol = -1;
 let highlightedCells = [], placementHighlights = [];
+let moveTargetCell = null;
+let baseTargetHighlight = null;
 let currentMode = 'classic';
 let playerId = 'p_' + Math.random().toString(36).substr(2, 9);
 let pvpRoom = null, pvpIsHost = false, pvpOpponentId = null;
 let attackAnimationTimeout = null;
 let lastTurnFlag = false;
 
-/* ====== ГЕРОИ / ЖИЗНИ ИГРОКА ====== */
+/* PvP синхронизация */
+let opponentFieldUnsub = null;
+let damageQueueUnsub = null;
+let gameStateUnsub = null;
+let heroUnsub = null;
+
 let selectedHero = DEFAULT_HERO;
 let enemyHero = ALL_HEROES[Math.floor(Math.random() * ALL_HEROES.length)];
 let playerMaxBaseHp = MAX_BASE_HP;
 let enemyMaxBaseHp = MAX_BASE_HP;
-
 let playerBaseHp = MAX_BASE_HP;
 let enemyBaseHp = MAX_BASE_HP;
 let gameOver = false;
-let baseAttackAnim = null;
+/* Несколько всплывающих попапов урона по базе (массив, чтобы не затирали друг друга) */
+let baseDamagePopups = [];
 let pvpHpUnsub1 = null, pvpHpUnsub2 = null;
 let battlePhaseCount = 0;
+let placementExtensions = 0;
 
-/* ================= РЕНДЕР КАРТ И ГЕРОЕВ В ЛОББИ ================= */
-function cardImageHtml(c, cls) {
+/* ============ РЕНДЕР В ЛОББИ ============ */
+function cardImageHtml(c) {
   if (c.image) return '<img src="' + c.image + '" alt="' + c.name + '" onerror="this.style.display=\'none\';this.parentNode.textContent=\'' + c.emoji + '\';">';
   return c.emoji;
 }
@@ -443,15 +392,11 @@ function renderHeroesPage() {
       '<div class="hero-name">' + h.name + '</div>' +
       '<div class="hero-desc">' + h.desc + '</div>' +
       '<button class="hero-pick">' + (isSel ? '✓ ВЫБРАН' : 'ВЫБРАТЬ') + '</button>';
-    d.onclick = () => {
-      selectedHero = h;
-      renderHeroesPage();
-    };
+    d.onclick = () => { selectedHero = h; renderHeroesPage(); };
     g.appendChild(d);
   });
 }
 
-/* ================= СТРАНИЦА РЕЖИМОВ ================= */
 function renderModesPage() {
   const g = document.getElementById('modes-grid');
   if (!g) return;
@@ -477,13 +422,8 @@ function renderModesPage() {
   });
 }
 
-function openModePage() {
-  renderModesPage();
-  document.getElementById('mode-page').classList.add('active');
-}
-function closeModePage() {
-  document.getElementById('mode-page').classList.remove('active');
-}
+function openModePage() { renderModesPage(); document.getElementById('mode-page').classList.add('active'); }
+function closeModePage() { document.getElementById('mode-page').classList.remove('active'); }
 function updateModeLabel() {
   const m = MODES.find(x => x.id === currentMode);
   const btn = document.getElementById('mode-button');
@@ -491,33 +431,34 @@ function updateModeLabel() {
   btn.textContent = (m.emoji ? m.emoji + ' ' : '') + m.name;
 }
 
-/* ================= ГЕРОЙ-УТИЛИТЫ ================= */
 function heroById(id) { return ALL_HEROES.find(h => h.id === id) || null; }
 function computeMaxBaseHp(hero) { return MAX_BASE_HP + (hero && hero.bonusBaseHp ? hero.bonusBaseHp : 0); }
 
 /* ================= СЕТКА ================= */
+function makeEmptyCell(isTopHalf) {
+  return {
+    color: isTopHalf ? '#ff4444' : '#4488ff',
+    unit: null, owner: null, hp: 0, maxHp: 0, damage: 0,
+    attackRange: 0, heal: 0, hasMovedThisRound: false, cardData: null
+  };
+}
+
 function initGrid(isPvP) {
   grid.length = 0;
   for (let r = 0; r < ROWS; r++) {
     grid[r] = [];
-    for (let c = 0; c < COLS; c++) {
-      grid[r][c] = {
-        color: r < 3 ? '#ff4444' : '#4488ff',
-        unit: null, hp: 0, maxHp: 0, damage: 0,
-        attackRange: 0, heal: 0, hasMovedThisRound: false, cardData: null
-      };
-    }
+    for (let c = 0; c < COLS; c++) grid[r][c] = makeEmptyCell(r < 3);
   }
   if (!isPvP) {
     const hpB = enemyHero ? (enemyHero.bonusHp || 0) : 0;
     const dmgB = enemyHero ? (enemyHero.bonusDmg || 0) : 0;
     for (let r = 0; r < 3; r++) for (let c = 0; c < COLS; c++) {
       grid[r][c].unit = '👾';
+      grid[r][c].owner = 'enemy';
       grid[r][c].hp = 8 + hpB;
       grid[r][c].maxHp = 8 + hpB;
       grid[r][c].damage = 2 + dmgB;
       grid[r][c].attackRange = 1;
-      grid[r][c].heal = 0;
       grid[r][c].cardData = { id: 'minion', name: 'Миньон', emoji: '👾', image: null, hp: 8 + hpB, maxHp: 8 + hpB, damage: 2 + dmgB, attackRange: 1 };
     }
   }
@@ -530,6 +471,85 @@ function shuffleArray(a) {
     [s[i], s[j]] = [s[j], s[i]];
   }
   return s;
+}
+
+function countUnitsInRows(sR, eR) {
+  let n = 0;
+  for (let r = sR; r < eR; r++) for (let c = 0; c < COLS; c++)
+    if (grid[r] && grid[r][c] && grid[r][c].unit) n++;
+  return n;
+}
+function countMovableInRows(sR, eR) {
+  let n = 0;
+  for (let r = sR; r < eR; r++) for (let c = 0; c < COLS; c++)
+    if (grid[r] && grid[r][c] && grid[r][c].unit && !grid[r][c].hasMovedThisRound) n++;
+  return n;
+}
+
+function clearCell(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell) return;
+  cell.unit = null; cell.owner = null; cell.hp = 0; cell.maxHp = 0;
+  cell.damage = 0; cell.attackRange = 0; cell.heal = 0;
+  cell.cardData = null; cell.hasMovedThisRound = false;
+}
+
+function dirForOwner(owner) { return owner === 'player' ? -1 : 1; }
+
+/* Впереди кто-то — движения нет (ни ally, ни enemy) */
+function getMoveTarget(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit || !cell.owner) return null;
+  const tr = row + dirForOwner(cell.owner);
+  if (tr < 0 || tr >= ROWS) return null;
+  const t = grid[tr] && grid[tr][col];
+  if (!t) return null;
+  if (t.unit) return null;
+  return { row: tr, col };
+}
+
+function canAttackBase(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit || !cell.owner || cell.damage <= 0) return false;
+  if (cell.owner === 'player') return row === 0;
+  return row === ROWS - 1;
+}
+
+function findAttackTarget(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit || !cell.owner || cell.damage <= 0) return null;
+  const dir = dirForOwner(cell.owner);
+  for (let r = 1; r <= cell.attackRange; r++) {
+    const tr = row + dir * r;
+    if (tr < 0 || tr >= ROWS) break;
+    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
+      const tc = grid[tr] && grid[tr][c];
+      if (!tc || !tc.unit) continue;
+      if (tc.owner === cell.owner) continue;
+      return { row: tr, col: c };
+    }
+  }
+  return null;
+}
+
+function moveUnit(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit) return false;
+  const dest = getMoveTarget(row, col);
+  if (!dest) return false;
+  const t = grid[dest.row][dest.col];
+  if (!t || t.unit) return false;
+  t.unit = cell.unit;
+  t.owner = cell.owner;
+  t.hp = cell.hp;
+  t.maxHp = cell.maxHp;
+  t.damage = cell.damage;
+  t.attackRange = cell.attackRange;
+  t.heal = cell.heal;
+  t.cardData = cell.cardData;
+  t.hasMovedThisRound = true;
+  clearCell(row, col);
+  return true;
 }
 
 /* ================= КАРТЫ В БОЮ ================= */
@@ -609,48 +629,287 @@ function updatePhaseDisplay() {
   } else e.textContent = gamePhase;
 }
 
-/* ====== ПРОВЕРКА ПУСТОГО ПОЛЯ ====== */
-function isFieldEmpty(startRow, endRow) {
-  for (let r = startRow; r < endRow; r++) {
-    if (!grid[r]) continue;
-    for (let c = 0; c < COLS; c++) {
-      if (grid[r][c] && grid[r][c].unit) return false;
+/* ================= ПОДСВЕТКА ================= */
+function calculateHighlights(row, col) {
+  const hl = [];
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit || !cell.owner) return hl;
+  const dir = dirForOwner(cell.owner);
+  for (let r = 1; r <= cell.attackRange; r++) {
+    const tr = row + dir * r;
+    if (tr < 0 || tr >= ROWS) break;
+    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
+      const tc = grid[tr] && grid[tr][c];
+      if (!tc) continue;
+      if (tc.unit) {
+        if (tc.owner !== cell.owner && cell.damage > 0)
+          hl.push({ row: tr, col: c, color: 'rgba(255,40,40,0.55)', text: '-' + cell.damage });
+        else if (tc.owner === cell.owner && cell.heal > 0)
+          hl.push({ row: tr, col: c, color: 'rgba(50,100,255,0.5)', text: '+' + cell.heal });
+      }
     }
   }
-  return true;
+  return hl;
 }
 
-/* ====== АТАКА ИГРОКОВ ====== */
-function checkBaseAttacks() {
-  if (gameOver) return false;
-  if (gamePhase !== 'playerTurn') return false;
-  if (battlePhaseCount <= 1) return false;
+/* ================= УРОН ================= */
+function applyDamageToUnit(row, col, dmg) {
+  const tc = grid[row] && grid[row][col];
+  if (!tc || !tc.unit) return false;
+  tc.hp -= dmg;
+  highlightedCells.push({ row, col, color: 'rgba(255,40,40,0.85)', text: '-' + dmg });
+  if (tc.hp <= 0) { clearCell(row, col); return true; }
+  return false;
+}
 
-  let attacked = false;
+/* Всплывающий попап урона по базе */
+function spawnBaseDamagePopup(target, dmg, remaining) {
+  baseDamagePopups.push({
+    target: target,
+    dmg: dmg,
+    remaining: remaining,
+    startTime: Date.now(),
+    duration: 1500
+  });
+}
 
-  if (isFieldEmpty(0, 3) && enemyBaseHp > 0) {
-    enemyBaseHp--;
-    baseAttackAnim = { target: 'enemy', startTime: Date.now() };
-    attacked = true;
-    if (enemyBaseHp <= 0) {
-      gameOver = true;
-      setTimeout(() => endGame('player'), 900);
-      return true;
+function dealBaseDamageLocal(target, dmg) {
+  if (target === 'enemy') {
+    enemyBaseHp = Math.max(0, enemyBaseHp - dmg);
+    spawnBaseDamagePopup('enemy', dmg, enemyBaseHp);
+    if (enemyBaseHp <= 0 && !gameOver) { gameOver = true; setTimeout(() => endGame('player'), 800); }
+  } else {
+    playerBaseHp = Math.max(0, playerBaseHp - dmg);
+    spawnBaseDamagePopup('player', dmg, playerBaseHp);
+    if (playerBaseHp <= 0 && !gameOver) { gameOver = true; setTimeout(() => endGame('enemy'), 800); }
+  }
+}
+
+function sendDamageEvent(targetRow, targetCol, dmg) {
+  if (!pvpRoom || !pvpOpponentId) return;
+  const path = 'pvp_damage/' + pvpRoom + '/' + pvpOpponentId;
+  const newRef = push(ref(db, path));
+  set(newRef, { row: targetRow, col: targetCol, dmg: dmg, time: Date.now() });
+}
+
+/* ================= АТАКА ================= */
+function unitAttack(row, col) {
+  const cell = grid[row] && grid[row][col];
+  if (!cell || !cell.unit) return;
+
+  const target = findAttackTarget(row, col);
+  if (target) {
+    const targetCell = grid[target.row] && grid[target.row][target.col];
+    const isEnemyTarget = !!(targetCell && targetCell.unit && targetCell.owner === 'enemy');
+    applyDamageToUnit(target.row, target.col, cell.damage);
+    if (currentMode === 'pvp' && cell.owner === 'player' && isEnemyTarget) {
+      const enemyRow = 5 - target.row;
+      const enemyCol = 3 - target.col;
+      sendDamageEvent(enemyRow, enemyCol, cell.damage);
+    }
+  } else if (canAttackBase(row, col)) {
+    const dmg = cell.damage * BASE_DAMAGE_MULT;
+    if (cell.owner === 'player') {
+      dealBaseDamageLocal('enemy', dmg);
+      if (currentMode === 'pvp') dealBaseDamage(pvpOpponentId, dmg);
+    } else {
+      dealBaseDamageLocal('player', dmg);
     }
   }
 
-  if (isFieldEmpty(3, 6) && playerBaseHp > 0) {
-    playerBaseHp--;
-    baseAttackAnim = { target: 'player', startTime: Date.now() };
-    attacked = true;
-    if (playerBaseHp <= 0) {
-      gameOver = true;
-      setTimeout(() => endGame('enemy'), 900);
-      return true;
+  if (cell.heal > 0 && cell.owner) {
+    const dir = dirForOwner(cell.owner);
+    for (let r = 1; r <= cell.attackRange; r++) {
+      const tr = row + dir * r;
+      if (tr < 0 || tr >= ROWS) break;
+      for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
+        const tc = grid[tr] && grid[tr][c];
+        if (tc && tc.unit && tc.owner === cell.owner) {
+          const oldHp = tc.hp;
+          tc.hp = Math.min(tc.maxHp, tc.hp + cell.heal);
+          const ah = tc.hp - oldHp;
+          if (ah > 0) highlightedCells.push({ row: tr, col: c, color: 'rgba(50,255,100,0.6)', text: '+' + ah });
+          break;
+        }
+      }
     }
   }
 
-  return attacked;
+  if (currentMode === 'pvp') saveMyField();
+}
+
+/* ================= ИИ ================= */
+function executeEnemyTurn() {
+  if (gameOver) return;
+  const units = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++)
+    if (grid[r] && grid[r][c] && grid[r][c].unit && grid[r][c].owner === 'enemy' && !grid[r][c].hasMovedThisRound)
+      units.push({ row: r, col: c });
+  if (!units.length) return;
+
+  const attackers = units.filter(u => findAttackTarget(u.row, u.col) || canAttackBase(u.row, u.col));
+  if (attackers.length) {
+    const chosen = attackers[Math.floor(Math.random() * attackers.length)];
+    grid[chosen.row][chosen.col].hasMovedThisRound = true;
+    highlightedCells = calculateHighlights(chosen.row, chosen.col);
+    setTimeout(() => {
+      unitAttack(chosen.row, chosen.col);
+      setTimeout(() => { highlightedCells = []; }, 1200);
+    }, 200);
+    return;
+  }
+
+  const movers = units.filter(u => getMoveTarget(u.row, u.col));
+  if (movers.length) {
+    const chosen = movers[Math.floor(Math.random() * movers.length)];
+    grid[chosen.row][chosen.col].hasMovedThisRound = true;
+    const dest = getMoveTarget(chosen.row, chosen.col);
+    moveUnit(chosen.row, chosen.col);
+    if (dest) highlightedCells = [{ row: dest.row, col: dest.col, color: 'rgba(255,220,60,0.55)', text: '👣' }];
+    setTimeout(() => { highlightedCells = []; }, 1200);
+    return;
+  }
+
+  const chosen = units[Math.floor(Math.random() * units.length)];
+  grid[chosen.row][chosen.col].hasMovedThisRound = true;
+}
+
+/* ================= ФАЗЫ ================= */
+function startPlacementPhase(fromRemote, keepShop) {
+  if (gameOver) return;
+  gamePhase = 'placement';
+  isPlayerTurn = false;
+  lastTurnFlag = false;
+
+  const elixirBonus = selectedHero ? (selectedHero.bonusElixir || 0) : 0;
+  elixir = Math.min(MAX_ELIXIR, elixir + 5 + elixirBonus);
+
+  selectedUnitRow = -1; selectedUnitCol = -1;
+  highlightedCells = []; placementHighlights = [];
+  moveTargetCell = null; baseTargetHighlight = null;
+  updateElixirDisplay(); updatePhaseDisplay();
+
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++)
+    if (grid[r] && grid[r][c]) grid[r][c].hasMovedThisRound = false;
+
+  if (!keepShop) {
+    availableCards = shuffleArray(ALL_CARDS).slice(0, 5);
+    purchasedCards = [];
+    placementExtensions = 0;
+  }
+  selectedPurchasedCard = null;
+  renderCards();
+
+  timerSeconds = keepShop ? 10 : 20;
+  document.getElementById('game-timer').textContent = timerSeconds;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    document.getElementById('game-timer').textContent = timerSeconds;
+    if (timerSeconds <= 0) { clearInterval(timerInterval); timerInterval = null; startBattlePhase(); }
+  }, 1000);
+
+  if (currentMode === 'pvp') {
+    saveMyField();
+    if (!fromRemote) syncStateToFB();
+  }
+}
+
+function startBattlePhase() {
+  if (gameOver) return;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+  const pUnits = countUnitsInRows(3, 6);
+  const eUnits = countUnitsInRows(0, 3);
+
+  if (pUnits === 0 && eUnits === 0) {
+    placementExtensions++;
+    if (placementExtensions >= 2) startPlacementPhase(false, false);
+    else startPlacementPhase(false, true);
+    return;
+  }
+
+  gamePhase = 'playerTurn';
+  battlePhaseCount++;
+  selectedUnitRow = -1; selectedUnitCol = -1;
+  highlightedCells = []; placementHighlights = [];
+  moveTargetCell = null; baseTargetHighlight = null;
+  document.getElementById('game-timer').textContent = '';
+
+  const pMoves = countMovableInRows(3, 6);
+  const eMoves = countMovableInRows(0, 3);
+
+  if (pUnits === 0 || eUnits === 0) {
+    isPlayerTurn = (pUnits > 0);
+    lastTurnFlag = true;
+    updatePhaseDisplay();
+    if (currentMode === 'pvp') syncStateToFB({ isLastTurn: true });
+    if (!isPlayerTurn && currentMode !== 'pvp') {
+      setTimeout(() => { executeEnemyTurn(); setTimeout(() => { if (!gameOver) { lastTurnFlag = false; startPlacementPhase(); } }, 900); }, 700);
+    }
+    return;
+  }
+
+  if (pMoves === 0 && eMoves === 0) { startPlacementPhase(); return; }
+
+  if (pMoves === 0) isPlayerTurn = false;
+  else if (eMoves === 0) isPlayerTurn = true;
+  else if (currentMode === 'pvp') isPlayerTurn = pvpIsHost ? Math.random() < 0.5 : false;
+  else isPlayerTurn = Math.random() < 0.5;
+
+  lastTurnFlag = false;
+  updatePhaseDisplay();
+  if (currentMode === 'pvp') syncStateToFB();
+
+  if (!isPlayerTurn && currentMode !== 'pvp') setTimeout(() => enemyTurnAndContinue(), 700);
+}
+
+function enemyTurnAndContinue() {
+  if (gameOver) return;
+  executeEnemyTurn();
+  setTimeout(() => {
+    if (gameOver) return;
+    if (lastTurnFlag) { lastTurnFlag = false; startPlacementPhase(); }
+    else processTurn();
+  }, 900);
+}
+
+function processTurn() {
+  if (gameOver) return;
+
+  const pUnits = countUnitsInRows(3, 6);
+  const eUnits = countUnitsInRows(0, 3);
+  const pMoves = countMovableInRows(3, 6);
+  const eMoves = countMovableInRows(0, 3);
+
+  if (pUnits === 0 && eUnits === 0) { startPlacementPhase(); return; }
+  if (pMoves === 0 && eMoves === 0) { startPlacementPhase(); return; }
+
+  if (pUnits === 0 || pMoves === 0) {
+    if (eMoves === 0) { startPlacementPhase(); return; }
+    isPlayerTurn = false;
+    lastTurnFlag = (eMoves === 1);
+    updatePhaseDisplay();
+    if (currentMode === 'pvp') { syncStateToFB({ isLastTurn: lastTurnFlag }); return; }
+    setTimeout(() => enemyTurnAndContinue(), 600);
+    return;
+  }
+
+  if (eUnits === 0 || eMoves === 0) {
+    if (pMoves === 0) { startPlacementPhase(); return; }
+    isPlayerTurn = true;
+    lastTurnFlag = (pMoves === 1);
+    updatePhaseDisplay();
+    if (currentMode === 'pvp') syncStateToFB({ isLastTurn: lastTurnFlag });
+    return;
+  }
+
+  isPlayerTurn = !isPlayerTurn;
+  lastTurnFlag = false;
+  updatePhaseDisplay();
+  if (currentMode === 'pvp') syncStateToFB();
+
+  if (!isPlayerTurn && currentMode !== 'pvp') setTimeout(() => enemyTurnAndContinue(), 700);
 }
 
 function endGame(winner) {
@@ -664,258 +923,69 @@ function endGame(winner) {
   if (winner === 'player') {
     titleEl.textContent = '🏆 ПОБЕДА!';
     titleEl.className = 'game-over-title win';
-    textEl.textContent = 'Вы повергли героя противника!';
+    textEl.textContent = 'Вы разрушили базу противника!';
   } else {
     titleEl.textContent = '💀 ПОРАЖЕНИЕ';
     titleEl.className = 'game-over-title lose';
-    textEl.textContent = 'Ваш герой пал в бою...';
+    textEl.textContent = 'Ваша база пала...';
   }
-
   modal.classList.add('active');
 }
 
-/* ====== ПОДСВЕТКА ====== */
-function calculateHighlights(row, col) {
-  const hl = [], cell = grid[row][col];
-  if (!cell || !cell.unit) return hl;
-  const dir = -1;
-  for (let r = 1; r <= cell.attackRange; r++) {
-    const tr = row + dir * r;
-    if (tr < 0 || tr >= ROWS) break;
-    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-      const tc = grid[tr] ? grid[tr][c] : null;
-      if (!tc) continue;
-      if (tc.unit) {
-        if (tr < 3 && cell.damage > 0) hl.push({ row: tr, col: c, color: 'rgba(255,40,40,0.6)', text: '-' + cell.damage });
-        else if (tr >= 3) hl.push({ row: tr, col: c, color: 'rgba(255,255,0,0.5)', text: '' });
-      } else hl.push({ row: tr, col: c, color: 'rgba(255,255,0,0.3)', text: '' });
-    }
-  }
-  if (cell.heal > 0) for (let r = 1; r <= cell.attackRange; r++) {
-    const tr = row + dir * r;
-    if (tr < 0 || tr >= ROWS) break;
-    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-      const tc = grid[tr] ? grid[tr][c] : null;
-      if (tc && tc.unit && tr >= 3) hl.push({ row: tr, col: c, color: 'rgba(50,100,255,0.6)', text: '+' + cell.heal });
-    }
-  }
-  return hl;
+/* ================= ДЕЙСТВИЯ ИГРОКА ================= */
+function playerSelectUnit(row, col) {
+  selectedUnitRow = row;
+  selectedUnitCol = col;
+  const cell = grid[row][col];
+  highlightedCells = calculateHighlights(row, col);
+  moveTargetCell = getMoveTarget(row, col);
+  baseTargetHighlight = canAttackBase(row, col) ? (cell.owner === 'player' ? 'enemy' : 'player') : null;
 }
 
-/* ====== АТАКА ЮНИТА ====== */
-function unitAttack(row, col) {
+function clearSelection() {
+  selectedUnitRow = -1; selectedUnitCol = -1;
+  highlightedCells = []; moveTargetCell = null; baseTargetHighlight = null;
+}
+
+function afterPlayerAction() {
+  if (currentMode === 'pvp') saveMyField();
+  if (lastTurnFlag) { lastTurnFlag = false; startPlacementPhase(); }
+  else processTurn();
+}
+
+function playerDoMove() {
+  const row = selectedUnitRow, col = selectedUnitCol;
+  if (row < 0) return;
   const cell = grid[row][col];
   if (!cell || !cell.unit) return;
-
-  const dir = row >= 3 ? -1 : 1;
-  let targetFound = false;
-
-  for (let r = 1; r <= cell.attackRange; r++) {
-    const tr = row + dir * r;
-    if (tr < 0 || tr >= ROWS) break;
-    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-      const tc = grid[tr]?.[c];
-      if (!tc || !tc.unit) continue;
-      const isEnemy = (row >= 3 && tr < 3) || (row < 3 && tr >= 3);
-      if (!isEnemy) continue;
-
-      tc.hp -= cell.damage;
-      targetFound = true;
-      highlightedCells.push({ row: tr, col: c, color: 'rgba(255, 40, 40, 0.8)', text: '-' + cell.damage });
-      if (tc.hp <= 0) {
-        tc.unit = null; tc.hp = 0; tc.maxHp = 0;
-        tc.damage = 0; tc.attackRange = 0; tc.heal = 0; tc.cardData = null;
-      }
-      break;
-    }
-    if (targetFound) break;
-  }
-
-  if (cell.heal > 0 && row >= 3) {
-    for (let r = 1; r <= cell.attackRange; r++) {
-      const tr = row + dir * r;
-      if (tr < 0 || tr >= ROWS) break;
-      for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-        const tc = grid[tr]?.[c];
-        if (tc && tc.unit && tr >= 3) {
-          const healAmount = cell.heal;
-          const oldHp = tc.hp;
-          tc.hp = Math.min(tc.maxHp, tc.hp + healAmount);
-          const actualHeal = tc.hp - oldHp;
-          if (actualHeal > 0) highlightedCells.push({ row: tr, col: c, color: 'rgba(50, 255, 100, 0.6)', text: '+' + actualHeal });
-          break;
-        }
-      }
-    }
-  }
-
-  if (currentMode === 'pvp') {
-    saveMyField();
-    syncAttack(row, col);
-  }
+  const ok = moveUnit(row, col);
+  clearSelection();
+  if (!ok) { afterPlayerAction(); return; }
+  afterPlayerAction();
 }
 
-function enemyAttack(row, col) {
+function playerDoAttack() {
+  const row = selectedUnitRow, col = selectedUnitCol;
+  if (row < 0) return;
   const cell = grid[row][col];
-  if (!cell || !cell.unit || cell.damage <= 0) return;
-  const dir = 1;
-  let targetFound = false;
-  for (let r = 1; r <= cell.attackRange; r++) {
-    const tr = row + dir * r;
-    if (tr < 0 || tr >= ROWS) break;
-    for (let c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-      const tc = grid[tr]?.[c];
-      if (!tc || !tc.unit) continue;
-      tc.hp -= cell.damage;
-      targetFound = true;
-      highlightedCells.push({ row: tr, col: c, color: 'rgba(255,40,40,0.8)', text: '-' + cell.damage });
-      if (tc.hp <= 0) {
-        tc.unit = null; tc.hp = 0; tc.maxHp = 0;
-        tc.damage = 0; tc.attackRange = 0; tc.heal = 0; tc.cardData = null;
-      }
-      break;
-    }
-    if (targetFound) break;
-  }
+  if (!cell || !cell.unit) return;
+  cell.hasMovedThisRound = true;
+  highlightedCells = calculateHighlights(row, col);
+  moveTargetCell = null;
+  if (attackAnimationTimeout) clearTimeout(attackAnimationTimeout);
+  attackAnimationTimeout = setTimeout(() => {
+    unitAttack(row, col);
+    setTimeout(() => { clearSelection(); afterPlayerAction(); }, 600);
+  }, 300);
 }
 
-function checkMoves() {
-  let pm = 0, em = 0;
-  for (let r = 3; r < 6; r++) for (let c = 0; c < COLS; c++)
-    if (grid[r] && grid[r][c] && grid[r][c].unit && !grid[r][c].hasMovedThisRound) pm++;
-  for (let r = 0; r < 3; r++) for (let c = 0; c < COLS; c++)
-    if (grid[r] && grid[r][c] && grid[r][c].unit && !grid[r][c].hasMovedThisRound) em++;
-  return { playerMoves: pm, enemyMoves: em };
-}
-
-function startPlacementPhase(fromRemote) {
-  if (gameOver) return;
-  gamePhase = 'placement';
-  isPlayerTurn = false;
-  lastTurnFlag = false;
-
-  const elixirBonus = selectedHero ? (selectedHero.bonusElixir || 0) : 0;
-  elixir = Math.min(MAX_ELIXIR, elixir + 5 + elixirBonus);
-
-  selectedUnitRow = -1; selectedUnitCol = -1;
-  highlightedCells = []; placementHighlights = [];
-  updateElixirDisplay(); updatePhaseDisplay();
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++)
-    if (grid[r] && grid[r][c]) grid[r][c].hasMovedThisRound = false;
-  availableCards = shuffleArray(ALL_CARDS).slice(0, 5);
-  purchasedCards = [];
-  selectedPurchasedCard = null;
-  renderCards();
-  timerSeconds = 20;
-  document.getElementById('game-timer').textContent = timerSeconds;
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    timerSeconds--;
-    document.getElementById('game-timer').textContent = timerSeconds;
-    if (timerSeconds <= 0) { clearInterval(timerInterval); startBattlePhase(); }
-  }, 1000);
-  if (currentMode === 'pvp') {
-    saveMyField();
-    if (!fromRemote) syncStateToFB();
-  }
-}
-
-function startBattlePhase() {
-  if (gameOver) return;
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-  gamePhase = 'playerTurn';
-  lastTurnFlag = false;
-  battlePhaseCount++;
-  const { playerMoves, enemyMoves } = checkMoves();
-  if (currentMode === 'pvp') {
-    if (pvpIsHost) isPlayerTurn = playerMoves > 0 && (Math.random() < 0.5 || enemyMoves === 0);
-    else isPlayerTurn = false;
-  } else {
-    isPlayerTurn = playerMoves > 0 && (Math.random() < 0.5 || enemyMoves === 0);
-  }
-  selectedUnitRow = -1; selectedUnitCol = -1;
-  highlightedCells = []; placementHighlights = [];
-  updatePhaseDisplay();
-  document.getElementById('game-timer').textContent = '';
-  if (currentMode === 'pvp') syncStateToFB();
-
-  if (!isPlayerTurn && currentMode !== 'pvp') {
-    setTimeout(() => {
-      executeEnemyTurn();
-      setTimeout(() => processTurn(), 900);
-    }, 700);
-  }
-}
-
-function processTurn() {
-  if (gameOver) return;
-  checkBaseAttacks();
-  if (gameOver) return;
-
-  const { playerMoves, enemyMoves } = checkMoves();
-
-  if (playerMoves === 0 && enemyMoves === 0) { startPlacementPhase(); return; }
-
-  if (playerMoves === 0 || enemyMoves === 0) {
-    if (playerMoves > 0) {
-      isPlayerTurn = true;
-      lastTurnFlag = true;
-      updatePhaseDisplay();
-      if (currentMode === 'pvp') syncStateToFB({ isLastTurn: true });
-      return;
-    }
-    isPlayerTurn = false;
-    lastTurnFlag = false;
-    updatePhaseDisplay();
-    if (currentMode === 'pvp') {
-      syncStateToFB({ isLastTurn: true });
-    } else {
-      setTimeout(() => {
-        executeEnemyTurn();
-        setTimeout(() => {
-          checkBaseAttacks();
-          if (gameOver) return;
-          startPlacementPhase();
-        }, 900);
-      }, 600);
-    }
-    return;
-  }
-
-  isPlayerTurn = !isPlayerTurn;
-  updatePhaseDisplay();
-  if (currentMode === 'pvp') syncStateToFB();
-
-  if (!isPlayerTurn && currentMode !== 'pvp') {
-    setTimeout(() => {
-      executeEnemyTurn();
-      setTimeout(() => processTurn(), 900);
-    }, 700);
-  }
-}
-
-function executeEnemyTurn() {
-  if (gameOver) return;
-  const enemyUnits = [];
-  for (let r = 0; r < 3; r++) for (let c = 0; c < COLS; c++)
-    if (grid[r][c] && grid[r][c].unit && !grid[r][c].hasMovedThisRound) enemyUnits.push({ row: r, col: c });
-  if (enemyUnits.length > 0) {
-    const unit = enemyUnits[Math.floor(Math.random() * enemyUnits.length)];
-    grid[unit.row][unit.col].hasMovedThisRound = true;
-    enemyAttack(unit.row, unit.col);
-    setTimeout(() => { highlightedCells = []; }, 1500);
-  }
-}
-
-/* ====== ОТРИСОВКА ГЕРОЯ (аватар с круглой рамкой) ====== */
+/* ================= ОТРИСОВКА ================= */
 function drawHeroBadge(cx, cy, radius, hero, isEnemy) {
-  // Свечение
   ctx.beginPath();
   ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2);
   ctx.fillStyle = isEnemy ? 'rgba(255,70,70,0.18)' : 'rgba(77,150,255,0.18)';
   ctx.fill();
 
-  // Фон круга
   const grad = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.35, radius * 0.1, cx, cy, radius);
   grad.addColorStop(0, isEnemy ? 'rgba(255,130,130,0.55)' : 'rgba(130,190,255,0.55)');
   grad.addColorStop(1, 'rgba(8,10,26,0.95)');
@@ -924,7 +994,6 @@ function drawHeroBadge(cx, cy, radius, hero, isEnemy) {
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Картинка героя (если есть) — рисуем в обрезанном круге
   let drewImage = false;
   if (hero && hero.image) {
     const rec = loadImage(hero.image);
@@ -938,8 +1007,6 @@ function drawHeroBadge(cx, cy, radius, hero, isEnemy) {
       drewImage = true;
     }
   }
-
-  // Эмодзи — если картинки нет
   if (!drewImage) {
     ctx.font = Math.round(radius * 1.15) + 'px Arial';
     ctx.textAlign = 'center';
@@ -948,7 +1015,6 @@ function drawHeroBadge(cx, cy, radius, hero, isEnemy) {
     ctx.fillText(hero ? hero.emoji : '👤', cx, cy + radius * 0.06);
   }
 
-  // Рамка
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.lineWidth = 2.5;
@@ -956,54 +1022,105 @@ function drawHeroBadge(cx, cy, radius, hero, isEnemy) {
   ctx.stroke();
 }
 
-function drawHearts(rightX, y, hp, maxHp, size) {
-  ctx.font = size + 'px Arial';
+function drawBaseHp(rightX, y, hp, maxHp, size) {
+  ctx.font = 'bold ' + size + 'px Arial';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
-  let s = '';
-  for (let i = 0; i < maxHp; i++) s += (i < hp ? '❤️' : '🖤');
-  ctx.fillText(s, rightX, y);
+  const pct = maxHp > 0 ? hp / maxHp : 0;
+  ctx.fillStyle = pct > 0.5 ? '#7dff9b' : (pct > 0.25 ? '#ffd93d' : '#ff6b6b');
+  ctx.fillText(Math.max(0, Math.round(hp)) + ' ❤️', rightX, y);
 }
 
-/* ====== ОТРИСОВКА ИГРОКОВ ====== */
 function drawBases() {
   const radius = Math.max(13, Math.min(18, BASE_AREA_H * 0.37));
   const avatarCx = canvas.width - 10 - radius;
-  const heartsRightX = avatarCx - radius - 8;
-  const heartSize = Math.min(17, BASE_AREA_H * 0.42);
+  const hpRightX = avatarCx - radius - 8;
+  const hpSize = Math.min(16, BASE_AREA_H * 0.38);
 
   const eY = BASE_AREA_H / 2;
   const pY = canvas.height - BASE_AREA_H / 2;
 
-  drawHearts(heartsRightX, eY, enemyBaseHp, enemyMaxBaseHp, heartSize);
+  drawBaseHp(hpRightX, eY, enemyBaseHp, enemyMaxBaseHp, hpSize);
   drawHeroBadge(avatarCx, eY, radius, enemyHero, true);
 
-  drawHearts(heartsRightX, pY, playerBaseHp, playerMaxBaseHp, heartSize);
+  drawBaseHp(hpRightX, pY, playerBaseHp, playerMaxBaseHp, hpSize);
   drawHeroBadge(avatarCx, pY, radius, selectedHero, false);
 
-  if (baseAttackAnim) {
-    const elapsed = Date.now() - baseAttackAnim.startTime;
-    if (elapsed < 1200) {
-      const alpha = Math.max(0, 1 - elapsed / 1200);
-      const y = baseAttackAnim.target === 'enemy' ? eY : pY;
-      ctx.globalAlpha = alpha;
-      ctx.font = 'bold ' + Math.round(radius * 1.5) + 'px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#000';
-      ctx.fillStyle = '#ff3b3b';
-      ctx.strokeText('-1', avatarCx, y);
-      ctx.fillText('-1', avatarCx, y);
-      ctx.globalAlpha = 1;
-    } else {
-      baseAttackAnim = null;
-    }
+  if (baseTargetHighlight) {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 180);
+    const ty = baseTargetHighlight === 'enemy' ? eY : pY;
+    ctx.beginPath();
+    ctx.arc(avatarCx, ty, radius + 5, 0, Math.PI * 2);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,60,60,' + (0.35 + 0.55 * pulse) + ')';
+    ctx.stroke();
   }
+
+  /* ===== Всплывающие попапы урона по базам ===== */
+  const now = Date.now();
+  baseDamagePopups = baseDamagePopups.filter(p => now - p.startTime < p.duration);
+  baseDamagePopups.forEach(p => {
+    const elapsed = now - p.startTime;
+    const progress = elapsed / p.duration;
+    const alpha = Math.max(0, 1 - Math.pow(progress, 1.5));
+    const y = p.target === 'enemy' ? eY : pY;
+    const floatDir = p.target === 'enemy' ? -1 : 1;
+    const yOffset = floatDir * progress * radius * 1.6;
+
+    const px = avatarCx - radius - 28;
+
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const dmgText = '-' + p.dmg;
+    ctx.font = 'bold ' + Math.round(radius * 1.15) + 'px Arial';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    ctx.strokeText(dmgText, px, y + yOffset);
+    ctx.fillStyle = '#ff3b3b';
+    ctx.fillText(dmgText, px, y + yOffset);
+
+    const remainText = p.remaining + '/' + (p.target === 'enemy' ? enemyMaxBaseHp : playerMaxBaseHp) + ' ❤️';
+    ctx.font = 'bold ' + Math.round(radius * 0.72) + 'px Arial';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    ctx.strokeText(remainText, px, y + yOffset + floatDir * radius * 0.95);
+    ctx.fillStyle = '#ffe9e9';
+    ctx.fillText(remainText, px, y + yOffset + floatDir * radius * 0.95);
+
+    ctx.globalAlpha = 1;
+  });
 }
 
-/* ====== ОТРИСОВКА ЮНИТА В КЛЕТКЕ (картинка или эмодзи) ====== */
-function drawUnitInCell(cell, x, y) {
+function drawUnitInCell(cell, x, y, row) {
+  /* Красная подложка ТОЛЬКО для врага на МОЁМ поле (строки 3..5) —
+     уменьшенная копия клетки, перекрашенная в красный, по центру. */
+  if (cell.owner === 'enemy' && row >= 3) {
+    const pulse = 0.55 + 0.35 * Math.sin(Date.now() / 260);
+    const innerSize = cellSize / 1.5;
+    const ix = x + (cellSize - innerSize) / 2;
+    const iy = y + (cellSize - innerSize) / 2;
+    const irc = innerSize * 0.15;
+
+    /* мягкое свечение вокруг */
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,50,50,' + (0.75 + 0.25 * pulse) + ')';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = 'rgba(210,25,25,' + (0.55 + 0.25 * pulse) + ')';
+    ctx.beginPath();
+    ctx.roundRect(ix, iy, innerSize, innerSize, irc);
+    ctx.fill();
+    ctx.restore();
+
+    /* обводка */
+    ctx.beginPath();
+    ctx.roundRect(ix, iy, innerSize, innerSize, irc);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,90,90,' + (0.75 + 0.25 * pulse) + ')';
+    ctx.stroke();
+  }
+
   let drew = false;
   if (cell.cardData && cell.cardData.image) {
     const rec = loadImage(cell.cardData.image);
@@ -1061,7 +1178,8 @@ function drawGrid() {
         ctx.stroke();
       }
 
-      if (cell.unit && !cell.hasMovedThisRound && gamePhase === 'playerTurn' && isPlayerTurn && r >= 3) {
+      if (cell.unit && cell.owner === 'player' && !cell.hasMovedThisRound &&
+          gamePhase === 'playerTurn' && isPlayerTurn) {
         ctx.fillStyle = lastTurnFlag ? 'rgba(255,100,255,0.35)' : 'rgba(255,255,100,0.3)';
         ctx.beginPath();
         ctx.roundRect(x + 1, y + 1, cellSize - 2, cellSize - 2, cr);
@@ -1069,7 +1187,7 @@ function drawGrid() {
       }
 
       if (cell.unit) {
-        drawUnitInCell(cell, x, y);
+        drawUnitInCell(cell, x, y, r);
         const bw = cellSize * 0.75, bh = 4;
         const bx = x + (cellSize - bw) / 2, by = y + cellSize - 7;
         ctx.fillStyle = '#333';
@@ -1104,7 +1222,7 @@ function drawGrid() {
     ctx.beginPath();
     ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, cr);
     ctx.fill();
-    ctx.strokeStyle = h.color.replace('0.6', '0.9').replace('0.5', '0.8').replace('0.3', '0.6');
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 2;
     ctx.stroke();
     if (h.text) {
@@ -1118,101 +1236,109 @@ function drawGrid() {
       ctx.fillText(h.text, x + cellSize / 2, y + cellSize / 2);
     }
   });
+
+  if (moveTargetCell && selectedUnitRow >= 0) {
+    const x = gridOffsetX + moveTargetCell.col * (cellSize + gapBetween);
+    const y = gridOffsetY + moveTargetCell.row * (cellSize + gapBetween);
+    const pulse = 0.45 + 0.35 * Math.sin(Date.now() / 220);
+    ctx.fillStyle = 'rgba(60,255,140,' + pulse + ')';
+    ctx.beginPath();
+    ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, cr);
+    ctx.fill();
+    ctx.strokeStyle = '#3cff8c';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, cr);
+    ctx.stroke();
+
+    ctx.fillStyle = '#04361c';
+    ctx.font = 'bold ' + Math.max(14, cellSize * 0.5) + 'px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👣', x + cellSize / 2, y + cellSize / 2);
+  }
 }
 
-/* ====== PVP СИНХРОНИЗАЦИЯ ====== */
+/* ================= PVP СИНХРОНИЗАЦИЯ ================= */
 function saveMyField() {
   if (!pvpRoom) return;
-  const myUnits = [];
-  for (let r = 3; r < 6; r++) {
-    myUnits[r - 3] = [];
+  const myUnits = {};
+  for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = grid[r][c];
-      myUnits[r - 3][c] = cell.unit ? {
-        u: cell.unit, h: cell.hp, mh: cell.maxHp,
-        d: cell.damage, ar: cell.attackRange,
-        heal: cell.heal || 0, hm: cell.hasMovedThisRound,
-        img: cell.cardData ? (cell.cardData.image || null) : null
-      } : null;
+      const cell = grid[r] && grid[r][c];
+      if (cell && cell.unit && cell.owner === 'player') {
+        myUnits['r' + r + 'c' + c] = {
+          u: cell.unit,
+          h: cell.hp,
+          mh: cell.maxHp,
+          d: cell.damage,
+          ar: cell.attackRange,
+          heal: cell.heal || 0,
+          hm: cell.hasMovedThisRound ? 1 : 0,
+          img: (cell.cardData && cell.cardData.image) ? cell.cardData.image : 0
+        };
+      }
     }
   }
-  const enemyHp = [];
-  for (let r = 0; r < 3; r++) {
-    enemyHp[r] = [];
+  set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), {
+    u: myUnits,
+    t: Date.now()
+  });
+}
+
+function applyOpponentField(data) {
+  const u = (data && data.u) ? data.u : {};
+  for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = grid[r][c];
-      enemyHp[r][c] = { h: cell.unit ? cell.hp : 0, alive: !!cell.unit && cell.hp > 0 };
+      const myRow = 5 - r;
+      const myCol = 3 - c;
+      if (!grid[myRow]) grid[myRow] = [];
+      if (!grid[myRow][myCol]) grid[myRow][myCol] = makeEmptyCell(myRow < 3);
+      const cell = grid[myRow][myCol];
+      const ud = u['r' + r + 'c' + c];
+      if (ud && ud.u) {
+        if (cell.unit && cell.owner === 'player') continue;
+        cell.unit = ud.u;
+        cell.owner = 'enemy';
+        cell.hp = ud.h;
+        cell.maxHp = ud.mh;
+        cell.damage = ud.d;
+        cell.attackRange = ud.ar;
+        cell.heal = ud.heal || 0;
+        cell.hasMovedThisRound = !!ud.hm;
+        cell.cardData = { image: ud.img || null, emoji: ud.u, name: 'Враг' };
+      } else if (cell.unit && cell.owner === 'enemy') {
+        clearCell(myRow, myCol);
+      }
     }
   }
-  set(ref(db, 'pvp_fields/' + pvpRoom + '/' + playerId), { myUnits, enemyHp });
 }
 
 function watchOpponentField() {
   if (!pvpRoom || !pvpOpponentId) return;
-  onValue(ref(db, 'pvp_fields/' + pvpRoom + '/' + pvpOpponentId), (snap) => {
-    const data = snap.val();
-    if (!data) return;
+  if (opponentFieldUnsub) opponentFieldUnsub();
+  opponentFieldUnsub = onValue(ref(db, 'pvp_fields/' + pvpRoom + '/' + pvpOpponentId), (snap) => {
+    applyOpponentField(snap.val());
+  });
+}
 
-    if (data.myUnits) {
-      for (let r = 0; r < 3; r++) {
-        if (!data.myUnits[r]) continue;
-        for (let c = 0; c < COLS; c++) {
-          const myRow = 2 - r, myCol = 3 - c;
-          const unitData = data.myUnits[r][c];
-          if (unitData && unitData.u) {
-            if (!grid[myRow]) grid[myRow] = [];
-            if (!grid[myRow][myCol]) grid[myRow][myCol] = {
-              color: '#ff4444', unit: null, hp: 0, maxHp: 0,
-              damage: 0, attackRange: 0, heal: 0, hasMovedThisRound: false, cardData: null
-            };
-            grid[myRow][myCol].unit = unitData.u;
-            grid[myRow][myCol].hp = unitData.h;
-            grid[myRow][myCol].maxHp = unitData.mh;
-            grid[myRow][myCol].damage = unitData.d;
-            grid[myRow][myCol].attackRange = unitData.ar;
-            grid[myRow][myCol].heal = unitData.heal || 0;
-            grid[myRow][myCol].hasMovedThisRound = !!unitData.hm;
-            grid[myRow][myCol].cardData = { image: unitData.img || null, emoji: unitData.u, name: 'Враг' };
-          } else {
-            if (grid[myRow] && grid[myRow][myCol] && grid[myRow][myCol].unit) {
-              grid[myRow][myCol].unit = null;
-              grid[myRow][myCol].hp = 0;
-              grid[myRow][myCol].maxHp = 0;
-              grid[myRow][myCol].damage = 0;
-              grid[myRow][myCol].attackRange = 0;
-              grid[myRow][myCol].heal = 0;
-              grid[myRow][myCol].cardData = null;
-            }
-          }
-        }
+function watchDamageQueue() {
+  if (!pvpRoom) return;
+  if (damageQueueUnsub) damageQueueUnsub();
+  const path = 'pvp_damage/' + pvpRoom + '/' + playerId;
+  damageQueueUnsub = onChildAdded(ref(db, path), (snap) => {
+    const d = snap.val();
+    if (d) {
+      const cell = grid[d.row] && grid[d.row][d.col];
+      if (cell && cell.unit) {
+        cell.hp -= d.dmg;
+        highlightedCells.push({ row: d.row, col: d.col, color: 'rgba(255,40,40,0.85)', text: '-' + d.dmg });
+        setTimeout(() => { highlightedCells = highlightedCells.filter(h => !(h.row === d.row && h.col === d.col)); }, 900);
+        if (cell.hp <= 0) clearCell(d.row, d.col);
+        saveMyField();
       }
     }
-
-    if (data.enemyHp) {
-      for (let r = 0; r < 3; r++) {
-        if (!data.enemyHp[r]) continue;
-        for (let c = 0; c < COLS; c++) {
-          const myRow = 5 - r, myCol = 3 - c;
-          const hpData = data.enemyHp[r][c];
-          if (!hpData) continue;
-          const myCell = grid[myRow] && grid[myRow][myCol];
-          if (!myCell) continue;
-          if (!hpData.alive || hpData.h <= 0) {
-            if (myCell.unit) {
-              myCell.unit = null;
-              myCell.hp = 0;
-              myCell.maxHp = 0;
-              myCell.damage = 0;
-              myCell.attackRange = 0;
-              myCell.heal = 0;
-              myCell.cardData = null;
-            }
-          } else if (myCell.unit && myCell.hp !== hpData.h) {
-            myCell.hp = hpData.h;
-          }
-        }
-      }
-    }
+    remove(snap.ref);
   });
 }
 
@@ -1228,11 +1354,6 @@ function syncStateToFB(extra) {
   set(ref(db, 'rooms/' + pvpRoom + '/state'), payload);
 }
 
-function syncAttack(row, col) {
-  if (!pvpRoom) return;
-  set(ref(db, 'rooms/' + pvpRoom + '/attack'), { from: playerId, time: Date.now() });
-}
-
 function syncHero() {
   if (!pvpRoom) return;
   set(ref(db, 'rooms/' + pvpRoom + '/heroes/' + playerId), selectedHero ? selectedHero.id : DEFAULT_HERO.id);
@@ -1240,7 +1361,8 @@ function syncHero() {
 
 function watchHeroes() {
   if (!pvpRoom || !pvpOpponentId) return;
-  onValue(ref(db, 'rooms/' + pvpRoom + '/heroes/' + pvpOpponentId), (snap) => {
+  if (heroUnsub) heroUnsub();
+  heroUnsub = onValue(ref(db, 'rooms/' + pvpRoom + '/heroes/' + pvpOpponentId), (snap) => {
     const id = snap.val();
     if (!id) return;
     const h = heroById(id);
@@ -1253,7 +1375,8 @@ function watchHeroes() {
 
 function watchGameState() {
   if (!pvpRoom) return;
-  onValue(ref(db, 'rooms/' + pvpRoom + '/state'), (snap) => {
+  if (gameStateUnsub) gameStateUnsub();
+  gameStateUnsub = onValue(ref(db, 'rooms/' + pvpRoom + '/state'), (snap) => {
     const s = snap.val();
     if (!s) return;
     if (typeof s.battlePhase === 'number' && s.battlePhase > battlePhaseCount) battlePhaseCount = s.battlePhase;
@@ -1271,22 +1394,14 @@ function watchGameState() {
   });
 }
 
-function watchOpponentAttack() {
-  if (!pvpRoom) return;
-  onValue(ref(db, 'rooms/' + pvpRoom + '/attack'), (snap) => {
-    const a = snap.val();
-    if (!a || a.from === playerId || Date.now() - a.time > 3000) return;
-    saveMyField();
-  });
-}
-
-function dealBaseDamage(targetPlayerId) {
+function dealBaseDamage(targetPlayerId, amount) {
   if (!pvpRoom || !targetPlayerId) return;
+  const dmg = amount || 1;
   const path = 'pvp_base_hp/' + pvpRoom + '/' + targetPlayerId;
   get(ref(db, path)).then(snap => {
     const cur = snap.val();
     const curVal = (cur === null || cur === undefined) ? MAX_BASE_HP : cur;
-    if (curVal > 0) set(ref(db, path), curVal - 1);
+    set(ref(db, path), Math.max(0, curVal - dmg));
   });
 }
 
@@ -1298,7 +1413,11 @@ function watchBaseHp() {
   pvpHpUnsub1 = onValue(ref(db, 'pvp_base_hp/' + pvpRoom + '/' + playerId), (snap) => {
     const v = snap.val();
     if (v !== null && v !== undefined) {
+      const prev = playerBaseHp;
       playerBaseHp = v;
+      if (prev > v && prev > 0 && !gameOver) {
+        spawnBaseDamagePopup('player', prev - v, v);
+      }
       if (playerBaseHp <= 0 && !gameOver) { gameOver = true; setTimeout(() => endGame('enemy'), 600); }
     }
   });
@@ -1306,13 +1425,17 @@ function watchBaseHp() {
   pvpHpUnsub2 = onValue(ref(db, 'pvp_base_hp/' + pvpRoom + '/' + pvpOpponentId), (snap) => {
     const v = snap.val();
     if (v !== null && v !== undefined) {
+      const prev = enemyBaseHp;
       enemyBaseHp = v;
+      if (prev > v && prev > 0 && !gameOver) {
+        spawnBaseDamagePopup('enemy', prev - v, v);
+      }
       if (enemyBaseHp <= 0 && !gameOver) { gameOver = true; setTimeout(() => endGame('player'), 600); }
     }
   });
 }
 
-/* ====== PVP ПОИСК ====== */
+/* ================= PVP ПОИСК ================= */
 function startPvP() {
   document.getElementById('pvp-waiting').classList.add('active');
   let resolved = false;
@@ -1332,8 +1455,8 @@ function startPvP() {
       document.getElementById('pvp-waiting').classList.remove('active');
       startGame();
       setTimeout(() => {
-        watchOpponentField(); watchGameState(); watchOpponentAttack(); watchBaseHp(); watchHeroes();
-      }, 500);
+        watchOpponentField(); watchGameState(); watchDamageQueue(); watchBaseHp(); watchHeroes();
+      }, 400);
     }
   });
 
@@ -1360,8 +1483,8 @@ function startPvP() {
         document.getElementById('pvp-waiting').classList.remove('active');
         startGame();
         setTimeout(() => {
-          watchOpponentField(); watchGameState(); watchOpponentAttack(); watchBaseHp(); watchHeroes();
-        }, 500);
+          watchOpponentField(); watchGameState(); watchDamageQueue(); watchBaseHp(); watchHeroes();
+        }, 400);
       }
     });
   }, 2000);
@@ -1376,7 +1499,7 @@ function startPvP() {
   }, 30000);
 }
 
-/* ====== СТАРТ ИГРЫ ====== */
+/* ================= СТАРТ ИГРЫ ================= */
 function startGame() {
   lobby.style.display = 'none';
   lobby.classList.remove('active');
@@ -1388,13 +1511,15 @@ function startGame() {
   playerBaseHp = playerMaxBaseHp;
   enemyBaseHp = enemyMaxBaseHp;
   gameOver = false;
-  baseAttackAnim = null;
+  baseDamagePopups = [];
   battlePhaseCount = 0;
+  placementExtensions = 0;
   document.getElementById('game-over-modal').classList.remove('active');
 
   elixir = 5;
   selectedUnitRow = -1; selectedUnitCol = -1;
   highlightedCells = []; placementHighlights = [];
+  moveTargetCell = null; baseTargetHighlight = null;
   lastTurnFlag = false;
 
   if (currentMode === 'pvp' && pvpRoom) {
@@ -1418,7 +1543,7 @@ function showLobby() {
   lobby.style.display = 'flex';
 }
 
-/* ====== ОБРАБОТЧИКИ ====== */
+/* ================= ОБРАБОТЧИКИ ================= */
 document.getElementById('play-button').onclick = () => {
   if (currentMode === 'classic') {
     enemyHero = ALL_HEROES[Math.floor(Math.random() * ALL_HEROES.length)];
@@ -1444,15 +1569,23 @@ function cleanupGame() {
   if (attackAnimationTimeout) clearTimeout(attackAnimationTimeout);
   if (pvpHpUnsub1) { pvpHpUnsub1(); pvpHpUnsub1 = null; }
   if (pvpHpUnsub2) { pvpHpUnsub2(); pvpHpUnsub2 = null; }
+  if (damageQueueUnsub) { damageQueueUnsub(); damageQueueUnsub = null; }
+  if (opponentFieldUnsub) { opponentFieldUnsub(); opponentFieldUnsub = null; }
+  if (gameStateUnsub) { gameStateUnsub(); gameStateUnsub = null; }
+  if (heroUnsub) { heroUnsub(); heroUnsub = null; }
   if (pvpRoom) {
     remove(ref(db, 'pvp_fields/' + pvpRoom));
     remove(ref(db, 'rooms/' + pvpRoom));
     remove(ref(db, 'pvp_base_hp/' + pvpRoom));
+    remove(ref(db, 'pvp_damage/' + pvpRoom));
     pvpRoom = null; pvpOpponentId = null;
   }
   gameOver = false;
-  baseAttackAnim = null;
+  baseDamagePopups = [];
   battlePhaseCount = 0;
+  placementExtensions = 0;
+  clearSelection();
+  placementHighlights = [];
   document.getElementById('game-over-modal').classList.remove('active');
 }
 
@@ -1485,7 +1618,6 @@ document.getElementById('nav-cards').onclick = () => {
   renderHeroesPage();
 };
 
-/* ====== ВКЛАДКИ ====== */
 document.getElementById('tab-all-cards').onclick = () => {
   document.getElementById('tab-all-cards').classList.add('active');
   document.getElementById('tab-heroes').classList.remove('active');
@@ -1501,7 +1633,7 @@ document.getElementById('tab-heroes').onclick = () => {
   renderHeroesPage();
 };
 
-/* ====== КЛИК ПО ПОЛЮ ====== */
+/* ================= КЛИК ПО ПОЛЮ ================= */
 canvas.onclick = e => {
   if (gameOver) return;
   if (!gameScreen.classList.contains('active')) return;
@@ -1514,9 +1646,7 @@ canvas.onclick = e => {
   const row = Math.floor((my - gridOffsetY) / (cellSize + gapBetween));
 
   if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
-    if (gamePhase === 'playerTurn') {
-      selectedUnitRow = -1; selectedUnitCol = -1; highlightedCells = [];
-    }
+    if (gamePhase === 'playerTurn' && isPlayerTurn) clearSelection();
     return;
   }
 
@@ -1526,6 +1656,7 @@ canvas.onclick = e => {
       const hpBonus = selectedHero ? (selectedHero.bonusHp || 0) : 0;
       const dmgBonus = selectedHero ? (selectedHero.bonusDmg || 0) : 0;
       grid[row][col].unit = card.emoji;
+      grid[row][col].owner = 'player';
       grid[row][col].hp = card.hp + hpBonus;
       grid[row][col].maxHp = card.maxHp + hpBonus;
       grid[row][col].damage = card.damage + dmgBonus;
@@ -1541,40 +1672,37 @@ canvas.onclick = e => {
     return;
   }
 
-  if (gamePhase === 'playerTurn' && isPlayerTurn) {
-    const cell = grid[row][col];
-    if (row >= 3 && cell && cell.unit && !cell.hasMovedThisRound) {
-      if (selectedUnitRow === row && selectedUnitCol === col) {
-        cell.hasMovedThisRound = true;
-        const attackTargets = calculateHighlights(row, col);
-        highlightedCells = attackTargets;
-        if (attackAnimationTimeout) clearTimeout(attackAnimationTimeout);
-        attackAnimationTimeout = setTimeout(() => {
-          unitAttack(row, col);
-          setTimeout(() => {
-            selectedUnitRow = -1; selectedUnitCol = -1;
-            highlightedCells = [];
-            if (currentMode === 'pvp') saveMyField();
-            if (battlePhaseCount > 1) {
-              if (currentMode === 'pvp' && isFieldEmpty(0, 3) && enemyBaseHp > 0) {
-                enemyBaseHp--;
-                baseAttackAnim = { target: 'enemy', startTime: Date.now() };
-                dealBaseDamage(pvpOpponentId);
-                if (enemyBaseHp <= 0) { gameOver = true; setTimeout(() => endGame('player'), 800); return; }
-              }
-            }
-            if (lastTurnFlag) { lastTurnFlag = false; startPlacementPhase(); }
-            else { processTurn(); }
-          }, 600);
-        }, 300);
-      } else {
-        selectedUnitRow = row; selectedUnitCol = col;
-        highlightedCells = calculateHighlights(row, col);
+  if (gamePhase !== 'playerTurn' || !isPlayerTurn) return;
+
+  const cell = grid[row][col];
+
+  if (moveTargetCell && selectedUnitRow >= 0 &&
+      row === moveTargetCell.row && col === moveTargetCell.col) {
+    playerDoMove();
+    return;
+  }
+
+  if (cell && cell.unit && cell.owner === 'enemy' && selectedUnitRow >= 0) {
+    const selCell = grid[selectedUnitRow] && grid[selectedUnitRow][selectedUnitCol];
+    if (selCell && selCell.unit && selCell.owner === 'player' && !selCell.hasMovedThisRound) {
+      const atkTarget = findAttackTarget(selectedUnitRow, selectedUnitCol);
+      if (atkTarget && atkTarget.row === row && atkTarget.col === col) {
+        playerDoAttack();
+        return;
       }
-    } else {
-      selectedUnitRow = -1; selectedUnitCol = -1; highlightedCells = [];
     }
   }
+
+  if (cell && cell.unit && cell.owner === 'player' && !cell.hasMovedThisRound) {
+    if (selectedUnitRow === row && selectedUnitCol === col) {
+      playerDoAttack();
+    } else {
+      playerSelectUnit(row, col);
+    }
+    return;
+  }
+
+  clearSelection();
 };
 
 document.getElementById('menu-toggle').onclick = () => {
@@ -1591,7 +1719,7 @@ document.getElementById('settings-overlay').onclick = () => {
   document.getElementById('menu-toggle').classList.remove('active');
 };
 
-/* ====== РЕСАЙЗ ====== */
+/* ================= РЕСАЙЗ ================= */
 function resizeCanvas() {
   const cont = document.getElementById('game-container');
   const ca = document.getElementById('cards-area');
@@ -1619,7 +1747,7 @@ window.addEventListener('orientationchange', () => {
   if (gameScreen.classList.contains('active')) setTimeout(resizeCanvas, 500);
 });
 
-/* ====== ИНИЦИАЛИЗАЦИЯ ====== */
+/* ================= ИНИЦИАЛИЗАЦИЯ ================= */
 preloadAllImages();
 updateModeLabel();
 
